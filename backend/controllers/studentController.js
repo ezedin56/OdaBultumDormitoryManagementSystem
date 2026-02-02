@@ -108,6 +108,79 @@ const deleteStudent = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Import students from Excel
+// @route   POST /api/students/import
+// @access  Private/Admin
+const importStudents = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        res.status(400);
+        throw new Error('No file uploaded');
+    }
+
+    const xlsx = require('xlsx');
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(sheet);
+
+    if (!data || data.length === 0) {
+        res.status(400);
+        throw new Error('Excel file is empty');
+    }
+
+    const importedStudents = [];
+    const errors = [];
+
+    for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+
+        try {
+            // Expected columns: studentId, fullName, gender, department, year, phone
+            const studentData = {
+                studentId: row.studentId || row.StudentID || row['Student ID'],
+                fullName: row.fullName || row.FullName || row['Full Name'],
+                gender: row.gender || row.Gender,
+                department: row.department || row.Department,
+                year: parseInt(row.year || row.Year),
+                phone: row.phone || row.Phone || '',
+            };
+
+            // Validate required fields
+            if (!studentData.studentId || !studentData.fullName || !studentData.gender || !studentData.department || !studentData.year) {
+                errors.push({ row: i + 2, error: 'Missing required fields', data: row });
+                continue;
+            }
+
+            // Check if student already exists
+            const existingStudent = await Student.findOne({ studentId: studentData.studentId });
+
+            if (existingStudent) {
+                // Update existing student
+                existingStudent.fullName = studentData.fullName;
+                existingStudent.gender = studentData.gender;
+                existingStudent.department = studentData.department;
+                existingStudent.year = studentData.year;
+                existingStudent.phone = studentData.phone;
+                await existingStudent.save();
+                importedStudents.push({ ...studentData, updated: true });
+            } else {
+                // Create new student
+                const newStudent = await Student.create(studentData);
+                importedStudents.push({ ...studentData, updated: false });
+            }
+        } catch (error) {
+            errors.push({ row: i + 2, error: error.message, data: row });
+        }
+    }
+
+    res.json({
+        success: true,
+        imported: importedStudents.length,
+        errors: errors.length,
+        details: { importedStudents, errors }
+    });
+});
+
 module.exports = {
     getStudents,
     getStudentById,
@@ -115,4 +188,5 @@ module.exports = {
     createStudent,
     updateStudent,
     deleteStudent,
+    importStudents,
 };
