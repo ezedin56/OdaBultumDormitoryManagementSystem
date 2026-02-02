@@ -35,10 +35,23 @@ const Login = () => {
     };
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
-            <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
-                <h2 className="text-center mb-2">Oda Bultum DMS</h2>
-                <p className="text-center text-muted mb-2">Sign in to your account</p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)', position: 'relative' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '400px', position: 'relative', zIndex: 10 }}>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                    <img 
+                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpWVhGUfDQPtwCOjcwTE3tQiAl0obKpwvN1A&s" 
+                        alt="OBU Logo" 
+                        style={{ 
+                            width: '80px', 
+                            height: '80px', 
+                            objectFit: 'contain',
+                            margin: '0 auto 1rem',
+                            display: 'block'
+                        }} 
+                    />
+                    <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', fontWeight: '700' }}>Dormitory Management</h2>
+                    <p className="text-muted" style={{ margin: 0 }}>Sign in to your account</p>
+                </div>
 
                 {error && <div style={{ color: 'var(--color-danger)', fontSize: '0.9rem', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
 
@@ -70,7 +83,13 @@ const Login = () => {
                         type="submit"
                         className="btn btn-primary mt-2"
                         disabled={isLoading}
-                        style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
+                        style={{ 
+                            opacity: isLoading ? 0.7 : 1, 
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            position: 'relative',
+                            zIndex: 10,
+                            pointerEvents: 'auto'
+                        }}
                     >
                         {isLoading ? 'Signing In...' : 'Sign In'}
                     </button>

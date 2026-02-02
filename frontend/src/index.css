@@ -81,6 +81,13 @@ a {
 button {
   cursor: pointer;
   font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Utilities */
@@ -108,6 +115,9 @@ button {
   transition: all var(--transition);
   border: none;
   font-size: var(--font-size-sm);
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .btn-primary {
@@ -115,9 +125,14 @@ button {
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
   transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-secondary {

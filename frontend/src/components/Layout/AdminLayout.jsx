@@ -18,9 +18,21 @@ const AdminLayout = () => {
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
             {/* Sidebar */}
             <aside style={{ width: '260px', backgroundColor: 'var(--surface-color)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: 'var(--spacing-lg)', borderBottom: '1px solid var(--border-color)' }}>
-                    <h3 style={{ color: 'var(--color-primary)' }}>OBU DMS</h3>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Admin Portal</span>
+                <div style={{ padding: 'var(--spacing-lg)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <img 
+                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpWVhGUfDQPtwCOjcwTE3tQiAl0obKpwvN1A&s" 
+                        alt="OBU Logo" 
+                        style={{ 
+                            width: '45px', 
+                            height: '45px', 
+                            objectFit: 'contain',
+                            borderRadius: '8px'
+                        }} 
+                    />
+                    <div>
+                        <h3 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '1.1rem' }}>OBU DMS</h3>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Admin Portal</span>
+                    </div>
                 </div>
 
                 <nav style={{ flex: 1, padding: 'var(--spacing-md)' }}>

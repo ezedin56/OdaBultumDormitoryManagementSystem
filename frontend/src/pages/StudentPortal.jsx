@@ -4,13 +4,14 @@ import {
     Printer, Download, Share2, Copy, Building, Users, ChevronDown
 } from 'lucide-react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const StudentPortal = () => {
     const [studentId, setStudentId] = useState('');
     const [placement, setPlacement] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
     const handleSearch = async (e) => {
         e.preventDefault();
@@ -36,19 +37,79 @@ const StudentPortal = () => {
     return (
         <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
             {/* Header */}
-            <header style={{ backgroundColor: 'white', padding: '1rem 2rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <header style={{ 
+                backgroundColor: 'white', 
+                padding: '1rem 2rem', 
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                position: 'sticky',
+                top: 0,
+                zIndex: 1000,
+                isolation: 'isolate'
+            }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#0BAF37', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                        OBU
-                    </div>
+                    <img 
+                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpWVhGUfDQPtwCOjcwTE3tQiAl0obKpwvN1A&s" 
+                        alt="OBU Logo" 
+                        style={{ 
+                            width: '50px', 
+                            height: '50px', 
+                            objectFit: 'contain',
+                            borderRadius: '8px'
+                        }} 
+                    />
                     <div>
                         <h1 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#111827', margin: 0 }}>Student Portal</h1>
                         <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>Dormitory Placement Viewer</p>
                     </div>
                 </div>
-                <Link to="/login" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', textDecoration: 'none', fontSize: '0.9rem' }}>
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Use setTimeout to ensure navigation happens after event handling
+                        setTimeout(() => {
+                            navigate('/login');
+                        }, 0);
+                    }}
+                    type="button"
+                    style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        color: '#6b7280', 
+                        fontSize: '0.9rem',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontFamily: 'inherit',
+                        fontWeight: '500',
+                        position: 'relative',
+                        zIndex: 10,
+                        WebkitTapHighlightColor: 'transparent',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        touchAction: 'manipulation',
+                        pointerEvents: 'auto'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                        e.currentTarget.style.borderColor = '#C5A036';
+                        e.currentTarget.style.color = '#C5A036';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.color = '#6b7280';
+                    }}
+                >
                     Login <ArrowRight size={16} />
-                </Link>
+                </button>
             </header>
 
             <main style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
@@ -94,8 +155,13 @@ const StudentPortal = () => {
                                     transition: 'background-color 0.2s',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em',
-                                    opacity: loading ? 0.7 : 1
+                                    opacity: loading ? 0.7 : 1,
+                                    position: 'relative',
+                                    zIndex: 10,
+                                    pointerEvents: loading ? 'none' : 'auto'
                                 }}
+                                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#b8932f')}
+                                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#C5A036')}
                             >
                                 {loading ? 'Searching...' : <><Search size={20} /> View Placement</>}
                             </button>
