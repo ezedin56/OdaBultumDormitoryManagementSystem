@@ -112,10 +112,19 @@ const deleteStudent = asyncHandler(async (req, res) => {
 // @route   POST /api/students/import
 // @access  Private/Admin
 const importStudents = asyncHandler(async (req, res) => {
+    console.log('📥 Import request received');
+    
     if (!req.file) {
+        console.log('❌ No file uploaded');
         res.status(400);
         throw new Error('No file uploaded');
     }
+
+    console.log('📄 File details:', {
+        name: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+    });
 
     const xlsx = require('xlsx');
     let data;
@@ -125,25 +134,38 @@ const importStudents = asyncHandler(async (req, res) => {
         const fileName = req.file.originalname.toLowerCase();
         
         if (fileName.endsWith('.csv')) {
+            console.log('📊 Processing CSV file');
             // Handle CSV file
             const csvContent = req.file.buffer.toString('utf-8');
             const workbook = xlsx.read(csvContent, { type: 'string' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            data = xlsx.utils.sheet_to_json(sheet);
+            data = xlsx.utils.sheet_to_json(sheet, { defval: '' });
         } else {
+            console.log('📊 Processing Excel file');
             // Handle Excel file
             const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
+            console.log('📋 Sheet name:', sheetName);
             const sheet = workbook.Sheets[sheetName];
-            data = xlsx.utils.sheet_to_json(sheet);
+            data = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+        }
+        
+        console.log('✅ File parsed successfully');
+        console.log('📊 Total rows found:', data.length);
+        
+        if (data.length > 0) {
+            console.log('📋 First row columns:', Object.keys(data[0]));
+            console.log('📋 First row sample:', data[0]);
         }
     } catch (parseError) {
+        console.error('❌ Parse error:', parseError);
         res.status(400);
         throw new Error('Failed to parse file: ' + parseError.message);
     }
 
     if (!data || data.length === 0) {
+        console.log('❌ No data found in file');
         res.status(400);
         throw new Error('File is empty or has no valid data');
     }
@@ -155,28 +177,62 @@ const importStudents = asyncHandler(async (req, res) => {
         const row = data[i];
 
         try {
-            // Expected columns: studentId, fullName, gender, department, year, phone
-            const studentData = {
-                studentId: row.studentId || row.StudentID || row['Student ID'],
-                fullName: row.fullName || row.FullName || row['Full Name'],
-                gender: row.gender || row.Gender,
-                department: row.department || row.Department,
-                year: parseInt(row.year || row.Year),
-                phone: String(row.phone || row.Phone || ''),
+            // More flexible column name matching (case-insensitive, with spaces/underscores)
+            const getColumnValue = (row, ...possibleNames) => {
+                for (const name of possibleNames) {
+                    // Try exact match
+                    if (row[name] !== undefined && row[name] !== '') return row[name];
+                    
+                    // Try case-insensitive match
+                    const key = Object.keys(row).find(k => 
+                        k.toLowerCase().replace(/[_\s]/g, '') === name.toLowerCase().replace(/[_\s]/g, '')
+                    );
+                    if (key && row[key] !== undefined && row[key] !== '') return row[key];
+                }
+                return null;
             };
+
+            const studentData = {
+                studentId: getColumnValue(row, 'studentId', 'StudentID', 'Student ID', 'student_id', 'ID', 'id'),
+                fullName: getColumnValue(row, 'fullName', 'FullName', 'Full Name', 'full_name', 'Name', 'name'),
+                gender: getColumnValue(row, 'gender', 'Gender', 'Sex', 'sex'),
+                department: getColumnValue(row, 'department', 'Department', 'dept', 'Dept'),
+                year: getColumnValue(row, 'year', 'Year', 'Level', 'level'),
+                phone: getColumnValue(row, 'phone', 'Phone', 'PhoneNumber', 'Phone Number', 'phone_number', 'Contact', 'contact'),
+            };
+
+            console.log(`Row ${i + 1} extracted:`, studentData);
 
             // Validate required fields
             if (!studentData.studentId || !studentData.fullName || !studentData.gender || !studentData.department || !studentData.year) {
-                errors.push({ row: i + 2, error: 'Missing required fields', data: row });
+                console.log(`❌ Row ${i + 2}: Missing required fields`);
+                errors.push({ 
+                    row: i + 2, 
+                    error: 'Missing required fields', 
+                    data: row,
+                    extracted: studentData 
+                });
                 continue;
             }
 
+            // Parse year as integer
+            studentData.year = parseInt(studentData.year);
+            if (isNaN(studentData.year)) {
+                errors.push({ row: i + 2, error: 'Invalid year value', data: row });
+                continue;
+            }
+
+            // Convert phone to string
+            studentData.phone = String(studentData.phone || '');
+
             // Normalize gender (accept M/F or Male/Female)
-            if (studentData.gender.toUpperCase().startsWith('M')) {
+            const genderStr = String(studentData.gender).toUpperCase();
+            if (genderStr.startsWith('M') || genderStr === 'M') {
                 studentData.gender = 'M';
-            } else if (studentData.gender.toUpperCase().startsWith('F')) {
+            } else if (genderStr.startsWith('F') || genderStr === 'F') {
                 studentData.gender = 'F';
             } else {
+                console.log(`❌ Row ${i + 2}: Invalid gender: ${studentData.gender}`);
                 errors.push({ row: i + 2, error: 'Invalid gender (must be M/F or Male/Female)', data: row });
                 continue;
             }
@@ -185,6 +241,7 @@ const importStudents = asyncHandler(async (req, res) => {
             const existingStudent = await Student.findOne({ studentId: studentData.studentId });
 
             if (existingStudent) {
+                console.log(`🔄 Updating existing student: ${studentData.studentId}`);
                 // Update existing student
                 existingStudent.fullName = studentData.fullName;
                 existingStudent.gender = studentData.gender;
@@ -194,14 +251,18 @@ const importStudents = asyncHandler(async (req, res) => {
                 await existingStudent.save();
                 importedStudents.push({ ...studentData, updated: true });
             } else {
+                console.log(`✅ Creating new student: ${studentData.studentId}`);
                 // Create new student
-                const newStudent = await Student.create(studentData);
+                await Student.create(studentData);
                 importedStudents.push({ ...studentData, updated: false });
             }
         } catch (error) {
+            console.error(`❌ Error processing row ${i + 2}:`, error);
             errors.push({ row: i + 2, error: error.message, data: row });
         }
     }
+
+    console.log(`✅ Import complete: ${importedStudents.length} imported, ${errors.length} errors`);
 
     res.json({
         success: true,
@@ -209,6 +270,111 @@ const importStudents = asyncHandler(async (req, res) => {
         errors: errors.length,
         details: { importedStudents, errors }
     });
+});
+
+// @desc    Generate PDF report for students by gender
+// @route   GET /api/students/report/pdf
+// @access  Private/Admin
+const generatePDFReport = asyncHandler(async (req, res) => {
+    const { gender } = req.query;
+    
+    const students = await Student.find({ gender }).populate('room').sort({ studentId: 1 });
+    
+    if (students.length === 0) {
+        res.status(404);
+        throw new Error('No students found');
+    }
+
+    // Simple HTML to PDF approach
+    let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { text-align: center; color: #333; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #3b82f6; color: white; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9fafb; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Oda Bultum University</h1>
+                <h2>Dormitory Management System</h2>
+                <h3>${gender === 'M' ? 'Male' : 'Female'} Students Report</h3>
+                <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Student Name</th>
+                        <th>Student ID</th>
+                        <th>Department</th>
+                        <th>Room Number</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    students.forEach((student, index) => {
+        const roomNumber = student.room ? `${student.room.building}-${student.room.roomNumber}` : 'Not Assigned';
+        html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.fullName}</td>
+                        <td>${student.studentId}</td>
+                        <td>${student.department}</td>
+                        <td>${roomNumber}</td>
+                    </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+            <div class="footer">
+                <p>Total Students: ${students.length}</p>
+                <p>&copy; ${new Date().getFullYear()} Oda Bultum University - Dormitory Management System</p>
+            </div>
+        </body>
+        </html>
+    `;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename=students_${gender}_report.html`);
+    res.send(html);
+});
+
+// @desc    Generate CSV report for students by gender
+// @route   GET /api/students/report/csv
+// @access  Private/Admin
+const generateCSVReport = asyncHandler(async (req, res) => {
+    const { gender } = req.query;
+    
+    const students = await Student.find({ gender }).populate('room').sort({ studentId: 1 });
+    
+    if (students.length === 0) {
+        res.status(404);
+        throw new Error('No students found');
+    }
+
+    // Create CSV content
+    let csv = 'No.,Student Name,Student ID,Department,Room Number\n';
+    
+    students.forEach((student, index) => {
+        const roomNumber = student.room ? `${student.room.building}-${student.room.roomNumber}` : 'Not Assigned';
+        csv += `${index + 1},"${student.fullName}","${student.studentId}","${student.department}","${roomNumber}"\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=students_${gender}_report.csv`);
+    res.send(csv);
 });
 
 module.exports = {
@@ -219,4 +385,6 @@ module.exports = {
     updateStudent,
     deleteStudent,
     importStudents,
+    generatePDFReport,
+    generateCSVReport,
 };
