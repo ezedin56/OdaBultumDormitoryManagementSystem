@@ -403,23 +403,224 @@ const Dorms = () => {
                                 </button>
                             </div>
 
-                            {/* Rooms Grid */}
-                            <div style={{ 
-                                display: 'grid', 
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                                gap: '1.5rem' 
-                            }}>
-                                {activeBlock.rooms.map(room => (
-                                    <RoomCard 
-                                        key={room._id} 
-                                        room={room} 
-                                        onEdit={handleEditRoom}
-                                        onDelete={handleDeleteRoom}
-                                    />
-                                ))}
-                            </div>
-
-                            {activeBlock.rooms.length === 0 && (
+                            {/* Rooms Table */}
+                            {activeBlock.rooms.length > 0 ? (
+                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ 
+                                            width: '100%', 
+                                            borderCollapse: 'collapse',
+                                            fontSize: '0.9rem'
+                                        }}>
+                                            <thead>
+                                                <tr style={{ 
+                                                    background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
+                                                    borderBottom: '2px solid #e2e8f0'
+                                                }}>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Room #</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Floor</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Type</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Gender</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Capacity</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Occupancy</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'left',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Status</th>
+                                                    <th style={{ 
+                                                        padding: '1rem', 
+                                                        textAlign: 'center',
+                                                        fontWeight: 600,
+                                                        color: '#475569'
+                                                    }}>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {activeBlock.rooms.map((room, index) => {
+                                                    const occupancyPercent = (room.occupants.length / room.capacity) * 100;
+                                                    const genderColor = room.gender === 'M' ? '#3b82f6' : '#ec4899';
+                                                    
+                                                    return (
+                                                        <tr 
+                                                            key={room._id}
+                                                            style={{ 
+                                                                borderBottom: '1px solid #e2e8f0',
+                                                                background: index % 2 === 0 ? 'white' : '#fafafa',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = index % 2 === 0 ? 'white' : '#fafafa'}
+                                                        >
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <span style={{ 
+                                                                    fontWeight: 600,
+                                                                    fontSize: '1rem',
+                                                                    color: '#1e293b'
+                                                                }}>
+                                                                    {room.roomNumber}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '1rem', color: '#64748b' }}>
+                                                                Floor {room.floor}
+                                                            </td>
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <span style={{
+                                                                    padding: '0.25rem 0.75rem',
+                                                                    background: '#f1f5f9',
+                                                                    borderRadius: '999px',
+                                                                    fontSize: '0.85rem',
+                                                                    fontWeight: 500,
+                                                                    color: '#475569'
+                                                                }}>
+                                                                    {room.type}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                    <div style={{
+                                                                        width: '24px',
+                                                                        height: '24px',
+                                                                        borderRadius: '4px',
+                                                                        background: genderColor,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        color: 'white',
+                                                                        fontWeight: 700,
+                                                                        fontSize: '0.75rem'
+                                                                    }}>
+                                                                        {room.gender}
+                                                                    </div>
+                                                                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                                                                        {room.gender === 'M' ? 'Male' : 'Female'}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <span style={{ 
+                                                                    fontWeight: 600,
+                                                                    color: '#1e293b'
+                                                                }}>
+                                                                    {room.capacity}
+                                                                </span>
+                                                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}> beds</span>
+                                                            </td>
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                        <span style={{ 
+                                                                            fontSize: '0.85rem',
+                                                                            fontWeight: 600,
+                                                                            color: occupancyPercent >= 100 ? '#dc2626' : 
+                                                                                   occupancyPercent >= 75 ? '#f59e0b' : '#10b981'
+                                                                        }}>
+                                                                            {room.occupants.length}/{room.capacity}
+                                                                        </span>
+                                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                                            ({Math.round(occupancyPercent)}%)
+                                                                        </span>
+                                                                    </div>
+                                                                    <div style={{ 
+                                                                        width: '100px',
+                                                                        height: '6px',
+                                                                        background: '#e2e8f0',
+                                                                        borderRadius: '999px',
+                                                                        overflow: 'hidden'
+                                                                    }}>
+                                                                        <div style={{
+                                                                            width: `${occupancyPercent}%`,
+                                                                            height: '100%',
+                                                                            background: occupancyPercent >= 100 ? '#dc2626' : 
+                                                                                       occupancyPercent >= 75 ? '#f59e0b' : '#10b981',
+                                                                            transition: 'width 0.3s'
+                                                                        }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <span style={{
+                                                                    padding: '0.35rem 0.75rem',
+                                                                    borderRadius: '999px',
+                                                                    fontSize: '0.8rem',
+                                                                    fontWeight: 600,
+                                                                    background: room.status === 'Available' ? '#dcfce7' : '#fee2e2',
+                                                                    color: room.status === 'Available' ? '#166534' : '#991b1b'
+                                                                }}>
+                                                                    {room.status}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '1rem' }}>
+                                                                <div style={{ 
+                                                                    display: 'flex', 
+                                                                    gap: '0.5rem',
+                                                                    justifyContent: 'center'
+                                                                }}>
+                                                                    <button 
+                                                                        onClick={() => handleEditRoom(room)}
+                                                                        className="btn btn-secondary"
+                                                                        style={{ 
+                                                                            padding: '0.4rem 0.75rem',
+                                                                            fontSize: '0.85rem',
+                                                                            gap: '0.25rem'
+                                                                        }}
+                                                                        title="Edit Room"
+                                                                    >
+                                                                        <Edit2 size={14} /> Edit
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteRoom(room._id)}
+                                                                        className="btn btn-secondary"
+                                                                        style={{ 
+                                                                            padding: '0.4rem 0.75rem',
+                                                                            color: 'var(--color-danger)',
+                                                                            borderColor: 'var(--color-danger)'
+                                                                        }}
+                                                                        title="Delete Room"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
                                 <div className="card" style={{ 
                                     textAlign: 'center', 
                                     padding: '3rem',
