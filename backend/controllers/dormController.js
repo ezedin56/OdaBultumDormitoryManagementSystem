@@ -193,64 +193,75 @@ const removeStudentFromRoom = asyncHandler(async (req, res) => {
 // @desc    Auto-allocate students to dorms
 // @route   POST /api/dorms/allocate
 // @access  Private/Admin
+// @desc    Auto-allocate students to dorms (with optional filters)
+// @route   POST /api/dorms/allocate
+// @access  Private/Admin
 const autoAllocate = asyncHandler(async (req, res) => {
-    // Get all unassigned students
-    const unassignedStudents = await Student.find({ room: null });
+    const { criteria, targetBuilding } = req.body; // criteria: { department, year, gender }, targetBuilding: string
+
+    // 1. Build Student Query
+    const studentQuery = { room: null };
+    if (criteria?.department) studentQuery.department = criteria.department;
+    if (criteria?.year) studentQuery.year = parseInt(criteria.year);
+    if (criteria?.gender) studentQuery.gender = criteria.gender;
+
+    // Get unassigned students matching filters
+    let unassignedStudents = await Student.find(studentQuery);
 
     if (unassignedStudents.length === 0) {
         return res.json({
             success: true,
-            message: 'No unassigned students found',
-            allocated: 0
+            message: 'No matching unassigned students found',
+            allocated: 0,
+            details: { malesAllocated: 0, femalesAllocated: 0, unallocated: 0 }
         });
     }
 
-    // Separate students by gender
+    // 2. Build Room Query
+    const roomQuery = { status: { $ne: 'Under Maintenance' }, status: { $ne: 'Full' } };
+    if (targetBuilding) roomQuery.building = targetBuilding;
+
+    // 3. Separate and Sort Students
     const maleStudents = unassignedStudents.filter(s => s.gender === 'M');
     const femaleStudents = unassignedStudents.filter(s => s.gender === 'F');
 
-    // Sort function based on year
+    // Sort function (Seniors > Freshmen, Department grouping)
     const sortStudents = (students) => {
         const freshmen = students.filter(s => s.year === 1);
         const seniors = students.filter(s => s.year > 1);
 
-        // Fresh students: Sort alphabetically only
         freshmen.sort((a, b) => a.fullName.localeCompare(b.fullName));
-
-        // Senior students: Sort by department, then alphabetically
         seniors.sort((a, b) => {
-            if (a.department !== b.department) {
-                return a.department.localeCompare(b.department);
-            }
+            if (a.department !== b.department) return a.department.localeCompare(b.department);
             return a.fullName.localeCompare(b.fullName);
         });
 
-        // Combine: seniors first, then freshmen
         return [...seniors, ...freshmen];
     };
 
     const sortedMaleStudents = sortStudents(maleStudents);
     const sortedFemaleStudents = sortStudents(femaleStudents);
 
-    // Get available rooms
-    const maleRooms = await Room.find({
-        gender: 'M',
-        status: { $ne: 'Under Maintenance' }
-    }).sort({ building: 1, floor: 1, roomNumber: 1 });
+    // 4. Fetch Available Rooms
+    // We need separate queries for M and F to respect building choices + gender constraints
+    const maleRoomQuery = { ...roomQuery, gender: 'M' };
+    const femaleRoomQuery = { ...roomQuery, gender: 'F' };
 
-    const femaleRooms = await Room.find({
-        gender: 'F',
-        status: { $ne: 'Under Maintenance' }
-    }).sort({ building: 1, floor: 1, roomNumber: 1 });
+    // Note: If gender criteria was strict (e.g. only F), one list will be empty
+    const maleRooms = await Room.find(maleRoomQuery).sort({ building: 1, floor: 1, roomNumber: 1 });
+    const femaleRooms = await Room.find(femaleRoomQuery).sort({ building: 1, floor: 1, roomNumber: 1 });
 
     let allocatedCount = 0;
     const allocationDetails = [];
 
-    // Allocation function
+    // Allocation logic
     const allocateToRooms = async (students, rooms) => {
         let studentIndex = 0;
+        let assignedInThisRun = 0;
 
         for (const room of rooms) {
+            // Re-check capacity in case of concurrency (though unlikely here)
+            // But relying on in-memory object is safe for single-request sequential flow
             const availableSpace = room.capacity - room.occupants.length;
 
             if (availableSpace > 0 && studentIndex < students.length) {
@@ -261,6 +272,7 @@ const autoAllocate = asyncHandler(async (req, res) => {
                     student.room = room._id;
                     await student.save();
                     allocatedCount++;
+                    assignedInThisRun++;
 
                     allocationDetails.push({
                         studentId: student.studentId,
@@ -284,10 +296,9 @@ const autoAllocate = asyncHandler(async (req, res) => {
             if (studentIndex >= students.length) break;
         }
 
-        return studentIndex;
+        return assignedInThisRun;
     };
 
-    // Allocate male and female students
     const malesAllocated = await allocateToRooms(sortedMaleStudents, maleRooms);
     const femalesAllocated = await allocateToRooms(sortedFemaleStudents, femaleRooms);
 
