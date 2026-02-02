@@ -1,12 +1,109 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-    Users, Building, AlertTriangle, ArrowUp, ArrowRight,
-    Activity, Clock, CheckCircle2, MoreHorizontal, Calendar,
-    PieChart, BarChart3, UserPlus, FileText
+    Users, Building, Bed, ArrowRight, TrendingUp, TrendingDown,
+    UserPlus, FileText, Calendar, Activity
 } from 'lucide-react';
+import axios from 'axios';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({
+        totalStudents: 0,
+        assignedStudents: 0,
+        unassignedStudents: 0,
+        totalRooms: 0,
+        availableRooms: 0,
+        fullRooms: 0,
+        totalCapacity: 0,
+        occupiedBeds: 0,
+        occupancyRate: 0,
+        blocks: []
+    });
+    const [recentStudents, setRecentStudents] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            // Fetch students
+            const { data: students } = await axios.get('http://localhost:5000/api/students');
+            
+            // Fetch rooms
+            const { data: rooms } = await axios.get('http://localhost:5000/api/dorms');
+
+            // Calculate statistics
+            const assignedStudents = students.filter(s => s.room).length;
+            const totalCapacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
+            const occupiedBeds = rooms.reduce((sum, r) => sum + r.occupants.length, 0);
+            const occupancyRate = totalCapacity > 0 ? Math.round((occupiedBeds / totalCapacity) * 100) : 0;
+            const availableRooms = rooms.filter(r => r.status === 'Available').length;
+            const fullRooms = rooms.filter(r => r.status === 'Full').length;
+
+            // Calculate block occupancy
+            const blockStats = {};
+            rooms.forEach(room => {
+                if (!blockStats[room.building]) {
+                    blockStats[room.building] = { 
+                        capacity: 0, 
+                        occupied: 0,
+                        gender: room.gender 
+                    };
+                }
+                blockStats[room.building].capacity += room.capacity;
+                blockStats[room.building].occupied += room.occupants.length;
+            });
+
+            const blocks = Object.keys(blockStats).map(building => ({
+                name: building,
+                gender: blockStats[building].gender,
+                occupancy: blockStats[building].capacity > 0 
+                    ? Math.round((blockStats[building].occupied / blockStats[building].capacity) * 100)
+                    : 0,
+                occupied: blockStats[building].occupied,
+                capacity: blockStats[building].capacity
+            })).sort((a, b) => a.name.localeCompare(b.name));
+
+            // Get recent students (last 5)
+            const recent = students
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 5);
+
+            setStats({
+                totalStudents: students.length,
+                assignedStudents,
+                unassignedStudents: students.length - assignedStudents,
+                totalRooms: rooms.length,
+                availableRooms,
+                fullRooms,
+                totalCapacity,
+                occupiedBeds,
+                occupancyRate,
+                blocks
+            });
+
+            setRecentStudents(recent);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '4rem' }}>
+                <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>Loading dashboard...</div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ animation: 'fadeIn 0.5s' }}>
+
             {/* Welcome Banner */}
             <div style={{
                 background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
@@ -18,214 +115,353 @@ const Dashboard = () => {
                 overflow: 'hidden',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
             }}>
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                         <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', color: 'white' }}>Welcome back, Admin</h1>
                         <p style={{ opacity: 0.8, maxWidth: '600px' }}>
-                            Here's what's happening across the campus today. You have 12 new student registrations.
+                            Here's what's happening across the campus today. You have {stats.unassignedStudents} unassigned students.
                         </p>
                     </div>
-                    <div style={{ textAlign: 'right', display: 'none', md: { display: 'block' } }}>
+                    <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>Current Term</div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fbbf24' }}>Spring 2024</div>
                     </div>
                 </div>
-                {/* Decorative circles */}
                 <div style={{ position: 'absolute', top: '-20%', right: '-5%', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(251, 191, 36, 0.1)' }} />
                 <div style={{ position: 'absolute', bottom: '-40%', right: '20%', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)' }} />
             </div>
 
-            {/* Stats Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            {/* Main Stats Grid */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+                gap: '1.5rem',
+                marginBottom: '2rem'
+            }}>
                 <StatCard
+                    icon={<Users size={24} />}
                     title="Total Students"
-                    value="4,250"
-                    change="+12% vs last month"
-                    icon={<Users size={24} color="#3b82f6" />}
-                    trend="up"
+                    value={stats.totalStudents}
+                    subtitle={`${stats.assignedStudents} assigned`}
+                    trend={stats.assignedStudents > 0 ? '+' + Math.round((stats.assignedStudents / stats.totalStudents) * 100) + '%' : '0%'}
+                    trendUp={true}
+                    color="#3b82f6"
+                    onClick={() => navigate('/admin/students')}
                 />
                 <StatCard
-                    title="Dorm Occupancy"
-                    value="87%"
-                    change="+2.4% vs last week"
-                    icon={<Building size={24} color="#ca8a04" />}
-                    trend="up"
+                    icon={<Building size={24} />}
+                    title="Total Rooms"
+                    value={stats.totalRooms}
+                    subtitle={`${stats.availableRooms} available`}
+                    trend={stats.fullRooms + ' full'}
+                    trendUp={false}
+                    color="#8b5cf6"
+                    onClick={() => navigate('/admin/dorms')}
                 />
                 <StatCard
-                    title="Available Rooms"
-                    value="42"
-                    change="Ready for assignment"
-                    icon={<Building size={24} color="#10b981" />}
-                    trend="neutral"
+                    icon={<Bed size={24} />}
+                    title="Occupancy Rate"
+                    value={stats.occupancyRate + '%'}
+                    subtitle={`${stats.occupiedBeds}/${stats.totalCapacity} beds`}
+                    trend={stats.occupancyRate >= 75 ? 'High' : 'Normal'}
+                    trendUp={stats.occupancyRate >= 75}
+                    color="#10b981"
+                    onClick={() => navigate('/admin/dorms')}
                 />
                 <StatCard
-                    title="Staff Active"
-                    value="28"
-                    change="Currently on duty"
-                    icon={<Activity size={24} color="#10b981" />}
-                    trend="neutral"
+                    icon={<UserPlus size={24} />}
+                    title="Unassigned"
+                    value={stats.unassignedStudents}
+                    subtitle="Students need rooms"
+                    trend={stats.unassignedStudents > 0 ? 'Action needed' : 'All set'}
+                    trendUp={false}
+                    color="#f59e0b"
+                    onClick={() => navigate('/admin/students')}
                 />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
-                {/* Main Content Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* Quick Actions */}
+            <div className="card" style={{ marginBottom: '2rem' }}>
+                <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Activity size={20} /> Quick Actions
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <ActionButton
+                        icon={<UserPlus size={18} />}
+                        label="Add Student"
+                        onClick={() => navigate('/admin/students')}
+                    />
+                    <ActionButton
+                        icon={<Building size={18} />}
+                        label="Add Block"
+                        onClick={() => navigate('/admin/dorms')}
+                    />
+                    <ActionButton
+                        icon={<FileText size={18} />}
+                        label="Import Students"
+                        onClick={() => navigate('/admin/students')}
+                    />
+                    <ActionButton
+                        icon={<Bed size={18} />}
+                        label="Auto-Allocate"
+                        onClick={() => navigate('/admin/students')}
+                    />
+                </div>
+            </div>
 
-                    {/* Occupancy Chart Section (Visual Mock) */}
-                    <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                                <BarChart3 size={20} color="#64748b" /> Campus Occupancy
-                            </h3>
-                            <button className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>View Details</button>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', height: '200px', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
-                            {['Block A', 'Block B', 'Block C', 'Block D', 'Block E'].map((block, i) => (
-                                <div key={block} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
-                                    <div style={{
-                                        width: '100%',
-                                        height: `${[85, 92, 65, 78, 45][i]}%`,
-                                        backgroundColor: i === 2 || i === 4 ? '#e2e8f0' : '#3b82f6',
-                                        borderRadius: '8px 8px 0 0',
-                                        transition: 'height 1s ease',
-                                        minHeight: '20px',
-                                        position: 'relative',
-                                        display: 'flex',
-                                        alignItems: 'flex-end',
-                                        justifyContent: 'center'
-                                    }}>
-                                        <span style={{ color: i === 2 || i === 4 ? '#64748b' : 'white', fontSize: '0.75rem', paddingBottom: '4px', fontWeight: 600 }}>
-                                            {[85, 92, 65, 78, 45][i]}%
-                                        </span>
-                                    </div>
-                                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>{block}</span>
-                                </div>
-                            ))}
-                        </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+                {/* Block Occupancy */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ margin: 0 }}>Block Occupancy</h3>
+                        <button 
+                            onClick={() => navigate('/admin/dorms')}
+                            style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: 'var(--color-primary)', 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            View All <ArrowRight size={16} />
+                        </button>
                     </div>
-
-                    {/* Recent Requests */}
-                    <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                                <Clock size={20} color="#64748b" /> Recent Activity
-                            </h3>
-                            <LinkToAll />
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <ActivityItem
-                                icon={<UserPlus size={18} color="#3b82f6" />}
-                                title="New Student Registration"
-                                desc="Ahmed Mohammed assigned to Block A-102"
-                                time="2 mins ago"
-                            />
-                            <ActivityItem
-                                icon={<Building size={18} color="#ca8a04" />}
-                                title="Room Assignment"
-                                desc="Block B-201 assigned to new student"
-                                time="15 mins ago"
-                            />
-                            <ActivityItem
-                                icon={<CheckCircle2 size={18} color="#10b981" />}
-                                title="Room Inspection"
-                                desc="Block C 2nd floor inspection completed"
-                                time="1 hour ago"
-                            />
-                        </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {stats.blocks.map(block => (
+                            <BlockOccupancyBar key={block.name} block={block} />
+                        ))}
+                        {stats.blocks.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                No blocks available
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Sidebar Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {/* Quick Actions */}
-                    <div className="card" style={{ background: 'linear-gradient(to bottom, #ffffff, #f8fafc)' }}>
-                        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Quick Actions</h3>
-                        <div style={{ display: 'grid', gap: '0.75rem' }}>
-                            <QuickActionBtn label="Register Student" icon={<UserPlus size={18} />} color="primary" />
-                            <QuickActionBtn label="Assign Room" icon={<Building size={18} />} color="secondary" />
-                            <QuickActionBtn label="Create Report" icon={<FileText size={18} />} color="secondary" />
-                            <QuickActionBtn label="System Settings" icon={<MoreHorizontal size={18} />} color="secondary" />
-                        </div>
+                {/* Recent Students */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ margin: 0 }}>Recent Students</h3>
+                        <button 
+                            onClick={() => navigate('/admin/students')}
+                            style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: 'var(--color-primary)', 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            View All <ArrowRight size={16} />
+                        </button>
                     </div>
-
-                    {/* System Status */}
-                    <div className="card">
-                        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>System Health</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <StatusItem label="Database" status="Operational" color="#10b981" />
-                            <StatusItem label="API Server" status="Operational" color="#10b981" />
-                            <StatusItem label="Backup" status="Processing..." color="#ca8a04" />
-                        </div>
-                    </div>
-
-                    {/* Calendar Widget Preview */}
-                    <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-                        <Calendar size={32} color="#94a3b8" style={{ marginBottom: '0.5rem' }} />
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a' }}>Oct 24</div>
-                        <div style={{ color: '#64748b' }}>Thursday</div>
-                        <div style={{ marginTop: '1rem', padding: '0.5rem', background: '#f1f5f9', borderRadius: '8px', fontSize: '0.85rem' }}>
-                            No events scheduled
-                        </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {recentStudents.map(student => (
+                            <StudentItem key={student._id} student={student} />
+                        ))}
+                        {recentStudents.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                No students yet
+                            </div>
+                        )}
                     </div>
                 </div>
+            </div>
+
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+// Helper Components
+const StatCard = ({ icon, title, value, subtitle, trend, trendUp, color, onClick }) => (
+    <div 
+        className="card" 
+        style={{ 
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            borderLeft: `4px solid ${color}`
+        }}
+        onClick={onClick}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+        }}
+    >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+            <div style={{ 
+                width: '48px', 
+                height: '48px', 
+                borderRadius: '12px', 
+                background: `${color}15`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: color
+            }}>
+                {icon}
+            </div>
+            <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.25rem',
+                fontSize: '0.85rem',
+                color: trendUp ? '#10b981' : '#64748b'
+            }}>
+                {trendUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {trend}
+            </div>
+        </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+            {title}
+        </div>
+        <div style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '0.25rem', color: '#1e293b' }}>
+            {value}
+        </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {subtitle}
+        </div>
+    </div>
+);
+
+const ActionButton = ({ icon, label, onClick }) => (
+    <button
+        onClick={onClick}
+        className="btn btn-secondary"
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            justifyContent: 'center',
+            padding: '0.75rem 1rem',
+            width: '100%',
+            transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-primary)';
+            e.currentTarget.style.color = 'white';
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--text-main)';
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+        }}
+    >
+        {icon}
+        {label}
+    </button>
+);
+
+const BlockOccupancyBar = ({ block }) => {
+    const genderColor = block.gender === 'M' ? '#3b82f6' : '#ec4899';
+    const genderLabel = block.gender === 'M' ? '♂' : '♀';
+    
+    return (
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 600 }}>{block.name}</span>
+                    <span style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        background: genderColor,
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: 700
+                    }}>
+                        {genderLabel}
+                    </span>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {block.occupied}/{block.capacity} ({block.occupancy}%)
+                </div>
+            </div>
+            <div style={{ 
+                width: '100%', 
+                height: '8px', 
+                background: '#e2e8f0', 
+                borderRadius: '999px',
+                overflow: 'hidden'
+            }}>
+                <div style={{
+                    width: `${block.occupancy}%`,
+                    height: '100%',
+                    background: block.occupancy >= 90 ? '#dc2626' : 
+                               block.occupancy >= 75 ? '#f59e0b' : '#10b981',
+                    transition: 'width 0.3s',
+                    borderRadius: '999px'
+                }}></div>
             </div>
         </div>
     );
 };
 
-// Sub-components
-const StatCard = ({ title, value, change, icon, trend, alert }) => (
-    <div className="card" style={{ transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-            <div style={{ padding: '0.5rem', borderRadius: '8px', backgroundColor: alert ? '#fef2f2' : '#f8fafc' }}>
-                {icon}
+const StudentItem = ({ student }) => (
+    <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        padding: '0.75rem',
+        background: '#f8fafc',
+        borderRadius: '8px',
+        transition: 'background 0.2s'
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+    onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+    >
+        <div>
+            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{student.fullName}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {student.studentId} • {student.department}
             </div>
-            {trend === 'up' && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', fontSize: '0.8rem', gap: '2px' }}><ArrowUp size={14} /> 12%</span>}
         </div>
-        <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{value}</div>
-        <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>{title}</div>
-        <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{change}</div>
-    </div>
-);
-
-const ActivityItem = ({ icon, title, desc, time }) => (
-    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '0.5rem 0' }}>
-        <div style={{
-            width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f8fafc',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0'
-        }}>
-            {icon}
+        <div>
+            {student.room ? (
+                <span style={{
+                    padding: '0.25rem 0.75rem',
+                    background: '#dcfce7',
+                    color: '#166534',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600
+                }}>
+                    Assigned
+                </span>
+            ) : (
+                <span style={{
+                    padding: '0.25rem 0.75rem',
+                    background: '#fee2e2',
+                    color: '#991b1b',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600
+                }}>
+                    Unassigned
+                </span>
+            )}
         </div>
-        <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>{title}</div>
-            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{desc}</div>
-        </div>
-        <div style={{ fontSize: '0.75rem', color: '#94a3b8', whitespace: 'nowrap' }}>{time}</div>
     </div>
-);
-
-const QuickActionBtn = ({ label, icon, color }) => (
-    <button className={`btn btn-${color}`} style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem', padding: '0.75rem 1rem' }}>
-        {icon} {label}
-    </button>
-);
-
-const StatusItem = ({ label, status, color }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: '#64748b', fontSize: '0.9rem' }}>{label}</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 500, color: color }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: color }}></span>
-            {status}
-        </span>
-    </div>
-);
-
-const LinkToAll = () => (
-    <button style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-        View All <ArrowRight size={14} />
-    </button>
 );
 
 export default Dashboard;
