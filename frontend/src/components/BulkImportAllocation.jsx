@@ -15,17 +15,26 @@ const BulkImportAllocation = ({ onImportComplete, onAllocationComplete }) => {
     const [criteria, setCriteria] = useState({ department: '', year: '', gender: '' });
     const [targetBuilding, setTargetBuilding] = useState('');
     const [availableBuildings, setAvailableBuildings] = useState([]);
+    const [availableDepartments, setAvailableDepartments] = useState([]);
 
     useEffect(() => {
-        // Fetch buildings for dropdown
-        const fetchBuildings = async () => {
+        // Fetch buildings and departments for dropdowns
+        const fetchFilters = async () => {
             try {
-                const { data } = await axios.get('http://localhost:5000/api/dorms');
-                const buildings = [...new Set(data.map(r => r.building))].sort();
+                // Fetch buildings from rooms
+                const { data: rooms } = await axios.get('http://localhost:5000/api/dorms');
+                const buildings = [...new Set(rooms.map(r => r.building))].sort();
                 setAvailableBuildings(buildings);
-            } catch (e) { console.error(e); }
+
+                // Fetch departments from students
+                const { data: students } = await axios.get('http://localhost:5000/api/students');
+                const departments = [...new Set(students.map(s => s.department))].sort();
+                setAvailableDepartments(departments);
+            } catch (e) {
+                console.error('Failed to fetch filter options:', e);
+            }
         };
-        fetchBuildings();
+        fetchFilters();
     }, []);
 
     const handleFileSelect = (e) => {
@@ -206,14 +215,15 @@ const BulkImportAllocation = ({ onImportComplete, onAllocationComplete }) => {
                             </div>
                             <div>
                                 <label style={{ fontSize: '0.8rem', display: 'block', marginBottom: '2px' }}>Department</label>
-                                <input
-                                    type="text"
+                                <select
                                     className="input-field"
                                     style={{ padding: '0.4rem' }}
-                                    placeholder="e.g. Software"
                                     value={criteria.department}
                                     onChange={(e) => setCriteria({ ...criteria, department: e.target.value })}
-                                />
+                                >
+                                    <option value="">Any Department</option>
+                                    {availableDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                                </select>
                             </div>
                             <div>
                                 <label style={{ fontSize: '0.8rem', display: 'block', marginBottom: '2px' }}>Year</label>
