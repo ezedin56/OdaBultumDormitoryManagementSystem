@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Search, Mail, RotateCcw, Phone, ArrowRight, User, Home, MapPin,
     Printer, Download, Share2, Copy, Building, Users, ChevronDown
@@ -7,13 +8,16 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 
 const StudentPortal = () => {
-    const [studentId, setStudentId] = useState('');
+    const [searchParams] = useSearchParams();
+    const [studentId, setStudentId] = useState(searchParams.get('studentId') || '');
     const [placement, setPlacement] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSearch = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault(); // Handle programmatic calls where e is undefined
+        if (!studentId) return;
+
         setError('');
         setPlacement(null);
         setLoading(true);
@@ -32,6 +36,15 @@ const StudentPortal = () => {
             setLoading(false);
         }
     };
+
+    // Auto-search if coming from URL
+    useEffect(() => {
+        const urlStudentId = searchParams.get('studentId');
+        if (urlStudentId) {
+            setStudentId(urlStudentId);
+            handleSearch();
+        }
+    }, [searchParams]);
 
     return (
         <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>

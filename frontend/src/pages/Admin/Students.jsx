@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, Search, Edit, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Search, Edit, Trash2, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import BulkImportAllocation from '../../components/BulkImportAllocation';
+import { Link } from 'react-router-dom';
 
 const Students = () => {
     const [students, setStudents] = useState([]);
@@ -94,6 +95,17 @@ const Students = () => {
                                     <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', color: 'var(--color-danger)' }}>
                                         <Trash2 size={16} />
                                     </button>
+                                    {/* Preview Portal Button */}
+                                    <Link
+                                        to={`/student-portal?studentId=${student.studentId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.25rem 0.5rem', color: '#ca8a04', textDecoration: 'none' }}
+                                        title="Preview Student Portal"
+                                    >
+                                        <ExternalLink size={16} />
+                                    </Link>
                                 </td>
                             </tr>
                         ))}
