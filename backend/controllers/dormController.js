@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Room = require('../models/Room');
 const Student = require('../models/Student');
+const SystemSettings = require('../models/SystemSettings');
 
 // @desc    Get all rooms
 // @route   GET /api/dorms
@@ -28,7 +29,13 @@ const getRoomById = asyncHandler(async (req, res) => {
 // @route   POST /api/dorms
 // @access  Private/Admin
 const createRoom = asyncHandler(async (req, res) => {
-    const { building, block, floor, roomNumber, type, capacity, gender } = req.body;
+    let { building, block, floor, roomNumber, type, capacity, gender } = req.body;
+
+    // If capacity is not provided, use system default
+    if (!capacity) {
+        const settings = await SystemSettings.findOne();
+        capacity = settings?.maxStudentsPerRoom || 4;
+    }
 
     const room = await Room.create({
         building,

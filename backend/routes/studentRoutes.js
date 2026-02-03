@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getStudents, getStudentById, getStudentByUniversityId, createStudent, updateStudent, deleteStudent, importStudents, generatePDFReport, generateCSVReport } = require('../controllers/studentController');
+const { getStudents, getStudentById, getStudentByUniversityId, createStudent, updateStudent, deleteStudent, deleteAllStudents, importStudents, generatePDFReport, generateCSVReport } = require('../controllers/studentController');
 const multer = require('multer');
 
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.route('/').get(getStudents).post(createStudent);
+router.route('/bulk/all').delete(deleteAllStudents);
 router.route('/import').post(upload.single('file'), (req, res, next) => {
     console.log('🔍 Import route hit');
     console.log('📦 Request body:', req.body);

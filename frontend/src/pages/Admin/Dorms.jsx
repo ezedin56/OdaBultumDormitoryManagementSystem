@@ -7,6 +7,8 @@ const Dorms = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('');
     const [blocks, setBlocks] = useState([]);
+    const [genderFilter, setGenderFilter] = useState('M'); // New state for gender filter
+    const [defaultCapacity, setDefaultCapacity] = useState(4); // System default capacity
     
     // Modal States
     const [showBlockModal, setShowBlockModal] = useState(false);
@@ -23,6 +25,7 @@ const Dorms = () => {
 
     useEffect(() => {
         fetchRooms();
+        fetchSystemSettings();
     }, []);
 
     useEffect(() => {
@@ -43,11 +46,18 @@ const Dorms = () => {
                 };
             });
             setBlocks(blockData);
+            
+            // Set active tab to first block of current gender filter
             if (!activeTab && blockData.length > 0) {
-                setActiveTab(blockData[0].name);
+                const firstBlockOfGender = blockData.find(b => b.gender === genderFilter);
+                if (firstBlockOfGender) {
+                    setActiveTab(firstBlockOfGender.name);
+                } else {
+                    setActiveTab(blockData[0].name);
+                }
             }
         }
-    }, [rooms]);
+    }, [rooms, genderFilter]);
 
     const fetchRooms = async () => {
         try {
@@ -57,6 +67,24 @@ const Dorms = () => {
         } catch (error) {
             console.error('Error fetching rooms:', error);
             setLoading(false);
+        }
+    };
+
+    const fetchSystemSettings = async () => {
+        try {
+            const userInfo = localStorage.getItem('userInfo');
+            if (!userInfo) return;
+
+            const { token } = JSON.parse(userInfo);
+            const { data } = await axios.get('http://localhost:5000/api/settings', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (data && data.maxStudentsPerRoom) {
+                setDefaultCapacity(data.maxStudentsPerRoom);
+            }
+        } catch (error) {
+            console.error('Error fetching system settings:', error);
         }
     };
 
@@ -147,7 +175,8 @@ const Dorms = () => {
         setRoomForm({
             building: activeTab || blockForm.name,
             roomNumber: '', floor: 1, type: 'Quad',
-            capacity: 4, gender: blockGender, status: 'Available'
+            capacity: defaultCapacity, // Use system default
+            gender: blockGender, status: 'Available'
         });
         setShowRoomModal(true);
     };
@@ -195,6 +224,9 @@ const Dorms = () => {
     if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
 
     const activeBlock = blocks.find(b => b.name === activeTab);
+    const filteredBlocks = blocks.filter(b => b.gender === genderFilter);
+    const maleBlocks = blocks.filter(b => b.gender === 'M');
+    const femaleBlocks = blocks.filter(b => b.gender === 'F');
 
     return (
         <div>
@@ -248,8 +280,101 @@ const Dorms = () => {
                 />
             </div>
 
-            {/* Tabs for Blocks */}
-            {blocks.length > 0 ? (
+            {/* Gender Category Tabs */}
+            {blocks.length > 0 && (
+                <div style={{ 
+                    display: 'flex', 
+                    gap: '1rem', 
+                    marginBottom: '1.5rem',
+                    background: 'white',
+                    padding: '0.5rem',
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                }}>
+                    <button
+                        onClick={() => {
+                            setGenderFilter('M');
+                            const firstMaleBlock = maleBlocks[0];
+                            if (firstMaleBlock) setActiveTab(firstMaleBlock.name);
+                        }}
+                        style={{
+                            flex: 1,
+                            padding: '1rem 1.5rem',
+                            border: 'none',
+                            background: genderFilter === 'M' 
+                                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                                : 'transparent',
+                            color: genderFilter === 'M' ? 'white' : '#64748b',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                            fontSize: '1.1rem',
+                            transition: 'all 0.3s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.75rem',
+                            boxShadow: genderFilter === 'M' ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none',
+                            transform: genderFilter === 'M' ? 'scale(1.02)' : 'scale(1)'
+                        }}
+                    >
+                        <span style={{ fontSize: '1.5rem' }}>♂</span>
+                        <div style={{ textAlign: 'left' }}>
+                            <div>Male Blocks</div>
+                            <div style={{ 
+                                fontSize: '0.75rem', 
+                                fontWeight: 500,
+                                opacity: genderFilter === 'M' ? 0.9 : 0.6
+                            }}>
+                                {maleBlocks.length} {maleBlocks.length === 1 ? 'Block' : 'Blocks'}
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button
+                        onClick={() => {
+                            setGenderFilter('F');
+                            const firstFemaleBlock = femaleBlocks[0];
+                            if (firstFemaleBlock) setActiveTab(firstFemaleBlock.name);
+                        }}
+                        style={{
+                            flex: 1,
+                            padding: '1rem 1.5rem',
+                            border: 'none',
+                            background: genderFilter === 'F' 
+                                ? 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)'
+                                : 'transparent',
+                            color: genderFilter === 'F' ? 'white' : '#64748b',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                            fontSize: '1.1rem',
+                            transition: 'all 0.3s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.75rem',
+                            boxShadow: genderFilter === 'F' ? '0 4px 12px rgba(236, 72, 153, 0.3)' : 'none',
+                            transform: genderFilter === 'F' ? 'scale(1.02)' : 'scale(1)'
+                        }}
+                    >
+                        <span style={{ fontSize: '1.5rem' }}>♀</span>
+                        <div style={{ textAlign: 'left' }}>
+                            <div>Female Blocks</div>
+                            <div style={{ 
+                                fontSize: '0.75rem', 
+                                fontWeight: 500,
+                                opacity: genderFilter === 'F' ? 0.9 : 0.6
+                            }}>
+                                {femaleBlocks.length} {femaleBlocks.length === 1 ? 'Block' : 'Blocks'}
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            )}
+
+            {/* Tabs for Blocks (filtered by gender) */}
+            {filteredBlocks.length > 0 ? (
                 <>
                     <div style={{ 
                         display: 'flex', 
@@ -259,9 +384,8 @@ const Dorms = () => {
                         overflowX: 'auto',
                         paddingBottom: '0.5rem'
                     }}>
-                        {blocks.map(block => {
+                        {filteredBlocks.map(block => {
                             const genderColor = block.gender === 'M' ? '#3b82f6' : '#ec4899';
-                            const genderLabel = block.gender === 'M' ? '♂ Male' : '♀ Female';
                             
                             return (
                                 <button
@@ -281,26 +405,19 @@ const Dorms = () => {
                                         position: 'relative',
                                         borderBottom: activeTab === block.name ? `3px solid ${genderColor}` : 'none',
                                         display: 'flex',
-                                        flexDirection: 'column',
                                         alignItems: 'center',
-                                        gap: '0.25rem'
+                                        gap: '0.5rem'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span>{block.name}</span>
-                                        <span style={{ 
-                                            fontSize: '0.75rem',
-                                            opacity: 0.8
-                                        }}>
-                                            ({block.rooms.length})
-                                        </span>
-                                    </div>
+                                    <span>{block.name}</span>
                                     <span style={{ 
-                                        fontSize: '0.7rem',
-                                        opacity: activeTab === block.name ? 0.9 : 0.6,
-                                        fontWeight: 500
+                                        fontSize: '0.75rem',
+                                        opacity: 0.8,
+                                        background: activeTab === block.name ? 'rgba(255,255,255,0.2)' : '#f1f5f9',
+                                        padding: '0.15rem 0.5rem',
+                                        borderRadius: '999px'
                                     }}>
-                                        {genderLabel}
+                                        {block.rooms.length} {block.rooms.length === 1 ? 'room' : 'rooms'}
                                     </span>
                                 </button>
                             );
@@ -636,6 +753,26 @@ const Dorms = () => {
                         </div>
                     )}
                 </>
+            ) : blocks.length > 0 ? (
+                <div className="card" style={{ 
+                    textAlign: 'center', 
+                    padding: '3rem',
+                    color: 'var(--text-muted)'
+                }}>
+                    <Building size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                    <h3>No {genderFilter === 'M' ? 'Male' : 'Female'} Blocks Yet</h3>
+                    <p>Create a {genderFilter === 'M' ? 'male' : 'female'} dormitory block to get started</p>
+                    <button 
+                        onClick={() => {
+                            setBlockForm({ name: '', description: '', gender: genderFilter });
+                            handleAddBlock();
+                        }} 
+                        className="btn btn-primary" 
+                        style={{ marginTop: '1rem' }}
+                    >
+                        <Plus size={18} /> Create {genderFilter === 'M' ? 'Male' : 'Female'} Block
+                    </button>
+                </div>
             ) : (
                 <div className="card" style={{ 
                     textAlign: 'center', 
@@ -767,6 +904,9 @@ const Dorms = () => {
                                     min="1"
                                     required
                                 />
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                    System default: {defaultCapacity} students
+                                </p>
                             </div>
                         </div>
 

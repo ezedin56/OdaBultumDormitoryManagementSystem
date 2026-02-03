@@ -40,12 +40,7 @@ const roomSchema = mongoose.Schema({
         type: String,
         enum: ['Available', 'Full', 'Under Maintenance'],
         default: 'Available'
-    },
-    assets: [{
-        name: String,
-        condition: String,
-        quantity: Number
-    }]
+    }
 }, {
     timestamps: true
 });
