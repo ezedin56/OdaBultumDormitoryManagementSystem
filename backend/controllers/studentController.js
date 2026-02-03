@@ -229,7 +229,22 @@ const importStudents = asyncHandler(async (req, res) => {
                 department: getColumnValue(row, 'Dept', 'dept', 'DEPT', 'department', 'Department', 'DEPARTMENT'),
                 year: getColumnValue(row, 'Year', 'year', 'YEAR', 'Level', 'level', 'LEVEL', 'Year Level', 'year_level'),
                 phone: getColumnValue(row, 'phone', 'Phone', 'PhoneNumber', 'Phone Number', 'phone_number', 'Contact', 'contact', 'PHONE', 'CONTACT', 'Mobile', 'mobile', 'Tel', 'tel'),
+                listNumber: getColumnValue(row, 'No', 'no', 'NO', 'Number', 'number', 'NUMBER', 'List Number', 'list_number', 'ListNumber', 'LIST NUMBER', 'List No', 'list_no', 'LIST NO', '#', 'S/N', 's/n', 'SN', 'sn', 'Serial', 'serial', 'SERIAL', 'Order', 'order', 'ORDER'),
             };
+
+            // Check if fullName is empty, try to construct from separate name columns
+            if (!studentData.fullName) {
+                const firstName = getColumnValue(row, 'First Name', 'FirstName', 'first_name', 'firstname', 'FIRST NAME', 'First name', 'first name', 'Given Name', 'given_name', 'GIVEN NAME');
+                const middleName = getColumnValue(row, 'Middle Name', 'MiddleName', 'middle_name', 'middlename', 'MIDDLE NAME', 'Middle name', 'middle name', 'Father Name', 'father_name', 'FATHER NAME', 'Fathers Name', 'fathers_name');
+                const lastName = getColumnValue(row, 'Last Name', 'LastName', 'last_name', 'lastname', 'LAST NAME', 'Last name', 'last name', 'Surname', 'surname', 'SURNAME', 'Family Name', 'family_name', 'FAMILY NAME', 'Grand Father Name', 'grandfather_name', 'GRAND FATHER NAME');
+                
+                // Construct full name from parts
+                const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim());
+                if (nameParts.length > 0) {
+                    studentData.fullName = nameParts.join(' ');
+                    console.log(`✅ Constructed full name from parts: ${studentData.fullName}`);
+                }
+            }
 
             console.log(`Row ${i + 1} extracted:`, studentData);
 
@@ -238,7 +253,7 @@ const importStudents = asyncHandler(async (req, res) => {
                 console.log(`❌ Row ${i + 2}: Missing required fields`);
                 errors.push({ 
                     row: i + 2, 
-                    error: 'Missing required fields', 
+                    error: 'Missing required fields (need: ID, Name, Gender, Department, Year)', 
                     data: row,
                     extracted: studentData 
                 });
@@ -274,6 +289,20 @@ const importStudents = asyncHandler(async (req, res) => {
             // Convert phone to string (optional field)
             studentData.phone = studentData.phone ? String(studentData.phone) : '';
 
+            // Parse list number (optional field)
+            if (studentData.listNumber) {
+                const listNum = parseInt(studentData.listNumber);
+                if (!isNaN(listNum) && listNum > 0) {
+                    studentData.listNumber = listNum;
+                    console.log(`✅ List number: ${listNum}`);
+                } else {
+                    console.log(`⚠️ Invalid list number: ${studentData.listNumber}, skipping`);
+                    studentData.listNumber = null;
+                }
+            } else {
+                studentData.listNumber = null;
+            }
+
             // Normalize gender (accept M/F or Male/Female)
             const genderStr = String(studentData.gender).toUpperCase();
             if (genderStr.startsWith('M') || genderStr === 'M') {
@@ -297,6 +326,9 @@ const importStudents = asyncHandler(async (req, res) => {
                 existingStudent.department = studentData.department;
                 existingStudent.year = studentData.year;
                 existingStudent.phone = studentData.phone;
+                if (studentData.listNumber !== null) {
+                    existingStudent.listNumber = studentData.listNumber;
+                }
                 await existingStudent.save();
                 importedStudents.push({ ...studentData, updated: true });
             } else {
@@ -335,23 +367,47 @@ const importStudents = asyncHandler(async (req, res) => {
         console.log('\n🏠 Auto-allocation is enabled. Allocating students to rooms...');
         
         try {
-            // Get unassigned students
-            const unassignedStudents = await Student.find({ room: null });
+            // Get unassigned students sorted by list number
+            const unassignedStudents = await Student.find({ room: null }).sort({ listNumber: 1, studentId: 1 });
             
             if (unassignedStudents.length > 0) {
                 // Separate by gender
                 const maleStudents = unassignedStudents.filter(s => s.gender === 'M');
                 const femaleStudents = unassignedStudents.filter(s => s.gender === 'F');
                 
-                // Get available rooms by gender
+                // Get available rooms by gender, sorted by building → block → room number
                 const maleRooms = await Room.find({ gender: 'M' }).populate('occupants');
                 const femaleRooms = await Room.find({ gender: 'F' }).populate('occupants');
                 
+                // Sort rooms by building → block → room number
+                const sortRooms = (rooms) => {
+                    return rooms.sort((a, b) => {
+                        // Sort by building
+                        const buildingCompare = (a.building || '').localeCompare(b.building || '');
+                        if (buildingCompare !== 0) return buildingCompare;
+                        
+                        // Sort by block
+                        const blockCompare = (a.block || '').localeCompare(b.block || '');
+                        if (blockCompare !== 0) return blockCompare;
+                        
+                        // Sort by room number (convert to number if possible)
+                        const roomA = parseInt(a.roomNumber) || a.roomNumber;
+                        const roomB = parseInt(b.roomNumber) || b.roomNumber;
+                        if (typeof roomA === 'number' && typeof roomB === 'number') {
+                            return roomA - roomB;
+                        }
+                        return String(roomA).localeCompare(String(roomB));
+                    });
+                };
+                
+                const sortedMaleRooms = sortRooms(maleRooms);
+                const sortedFemaleRooms = sortRooms(femaleRooms);
+                
                 let allocatedCount = 0;
                 
-                // Allocate males
+                // Allocate males in room order
                 for (const student of maleStudents) {
-                    const availableRoom = maleRooms.find(room => room.occupants.length < room.capacity);
+                    const availableRoom = sortedMaleRooms.find(room => room.occupants.length < room.capacity);
                     if (availableRoom) {
                         student.room = availableRoom._id;
                         await student.save();
@@ -360,9 +416,9 @@ const importStudents = asyncHandler(async (req, res) => {
                     }
                 }
                 
-                // Allocate females
+                // Allocate females in room order
                 for (const student of femaleStudents) {
-                    const availableRoom = femaleRooms.find(room => room.occupants.length < room.capacity);
+                    const availableRoom = sortedFemaleRooms.find(room => room.occupants.length < room.capacity);
                     if (availableRoom) {
                         student.room = availableRoom._id;
                         await student.save();
@@ -399,19 +455,88 @@ const importStudents = asyncHandler(async (req, res) => {
 const generatePDFReport = asyncHandler(async (req, res) => {
     try {
         const PDFDocument = require('pdfkit');
-        const { gender } = req.query;
+        const { gender, department, building, block, roomNumber, year } = req.query;
         
-        const query = gender ? { gender } : {};
-        const students = await Student.find(query).populate('room').sort({ studentId: 1 });
+        console.log('PDF Report Request - Filters:', { gender, department, building, block, roomNumber, year });
+        
+        // Build query based on filters
+        const query = {};
+        if (gender) query.gender = gender;
+        if (department) query.department = department;
+        if (year) query.year = parseInt(year);
+        
+        console.log('Student Query:', query);
+        
+        // Fetch students with room population
+        let students = await Student.find(query).populate('room').sort({ listNumber: 1, studentId: 1 });
+        
+        console.log(`Found ${students.length} students before room filtering`);
+        
+        // Apply room-based filters after population
+        if (building || block || roomNumber) {
+            students = students.filter(student => {
+                if (!student.room) return false;
+                if (building && student.room.building !== building) return false;
+                if (block && student.room.block !== block) return false;
+                if (roomNumber && student.room.roomNumber !== roomNumber) return false;
+                return true;
+            });
+        }
+        
+        console.log(`Found ${students.length} students after room filtering`);
+        
+        // Sort students by room assignment: building → block → room number → list number
+        students.sort((a, b) => {
+            // Students without rooms go to the end
+            if (!a.room && !b.room) return 0;
+            if (!a.room) return 1;
+            if (!b.room) return -1;
+            
+            // Sort by building
+            const buildingCompare = (a.room.building || '').localeCompare(b.room.building || '');
+            if (buildingCompare !== 0) return buildingCompare;
+            
+            // Sort by block
+            const blockCompare = (a.room.block || '').localeCompare(b.room.block || '');
+            if (blockCompare !== 0) return blockCompare;
+            
+            // Sort by room number (convert to number if possible)
+            const roomA = parseInt(a.room.roomNumber) || a.room.roomNumber;
+            const roomB = parseInt(b.room.roomNumber) || b.room.roomNumber;
+            if (typeof roomA === 'number' && typeof roomB === 'number') {
+                if (roomA !== roomB) return roomA - roomB;
+            } else {
+                const roomCompare = String(roomA).localeCompare(String(roomB));
+                if (roomCompare !== 0) return roomCompare;
+            }
+            
+            // Finally sort by list number, then student ID
+            if (a.listNumber && b.listNumber) {
+                if (a.listNumber !== b.listNumber) return a.listNumber - b.listNumber;
+            } else if (a.listNumber) {
+                return -1;
+            } else if (b.listNumber) {
+                return 1;
+            }
+            
+            return (a.studentId || '').localeCompare(b.studentId || '');
+        });
         
         if (students.length === 0) {
-            res.status(404);
-            throw new Error('No students found');
+            console.log('No students found matching filters');
+            return res.status(404).json({ message: 'No students found matching the filters' });
         }
 
-        const reportTitle = gender === 'M' ? 'Male Students Report' : 
-                           gender === 'F' ? 'Female Students Report' : 
-                           'All Students Report';
+        // Build report title based on filters
+        let reportTitle = 'Student Dorm Assignment Report';
+        const filters = [];
+        if (gender) filters.push(gender === 'M' ? 'Male' : 'Female');
+        if (department) filters.push(department);
+        if (building) filters.push(`Building: ${building}`);
+        if (block) filters.push(`Block: ${block}`);
+        if (roomNumber) filters.push(`Room: ${roomNumber}`);
+        if (year) filters.push(`Year ${year}`);
+        if (filters.length > 0) reportTitle += ` (${filters.join(', ')})`;
 
         // Create a new PDF document
         const doc = new PDFDocument({ 
@@ -523,22 +648,76 @@ const generatePDFReport = asyncHandler(async (req, res) => {
 // @route   GET /api/students/report/csv
 // @access  Private/Admin
 const generateCSVReport = asyncHandler(async (req, res) => {
-    const { gender } = req.query;
+    const { gender, department, building, block, roomNumber, year } = req.query;
     
-    const query = gender ? { gender } : {};
-    const students = await Student.find(query).populate('room').sort({ studentId: 1 });
+    // Build query based on filters
+    const query = {};
+    if (gender) query.gender = gender;
+    if (department) query.department = department;
+    if (year) query.year = parseInt(year);
+    
+    // Fetch students with room population
+    let students = await Student.find(query).populate('room').sort({ listNumber: 1, studentId: 1 });
+    
+    // Apply room-based filters after population
+    if (building || block || roomNumber) {
+        students = students.filter(student => {
+            if (!student.room) return false;
+            if (building && student.room.building !== building) return false;
+            if (block && student.room.block !== block) return false;
+            if (roomNumber && student.room.roomNumber !== roomNumber) return false;
+            return true;
+        });
+    }
+    
+    // Sort students by room assignment: building → block → room number → list number
+    students.sort((a, b) => {
+        // Students without rooms go to the end
+        if (!a.room && !b.room) return 0;
+        if (!a.room) return 1;
+        if (!b.room) return -1;
+        
+        // Sort by building
+        const buildingCompare = (a.room.building || '').localeCompare(b.room.building || '');
+        if (buildingCompare !== 0) return buildingCompare;
+        
+        // Sort by block
+        const blockCompare = (a.room.block || '').localeCompare(b.room.block || '');
+        if (blockCompare !== 0) return blockCompare;
+        
+        // Sort by room number (convert to number if possible)
+        const roomA = parseInt(a.room.roomNumber) || a.room.roomNumber;
+        const roomB = parseInt(b.room.roomNumber) || b.room.roomNumber;
+        if (typeof roomA === 'number' && typeof roomB === 'number') {
+            if (roomA !== roomB) return roomA - roomB;
+        } else {
+            const roomCompare = String(roomA).localeCompare(String(roomB));
+            if (roomCompare !== 0) return roomCompare;
+        }
+        
+        // Finally sort by list number, then student ID
+        if (a.listNumber && b.listNumber) {
+            if (a.listNumber !== b.listNumber) return a.listNumber - b.listNumber;
+        } else if (a.listNumber) {
+            return -1;
+        } else if (b.listNumber) {
+            return 1;
+        }
+        
+        return (a.studentId || '').localeCompare(b.studentId || '');
+    });
     
     if (students.length === 0) {
         res.status(404);
-        throw new Error('No students found');
+        throw new Error('No students found matching the filters');
     }
 
     // Create CSV content
     let csv = 'No.,Student Name,Student ID,Department,Room Number\n';
     
     students.forEach((student, index) => {
-        const roomNumber = student.room ? `${student.room.building}-${student.room.roomNumber}` : 'Not Assigned';
-        csv += `${index + 1},"${student.fullName}","${student.studentId}","${student.department}","${roomNumber}"\n`;
+        const roomNum = student.room ? `${student.room.building}-${student.room.roomNumber}` : 'Not Assigned';
+        csv += `${index + 1},"${student.fullName}","${student.studentId}","${student.department}","${roomNum}"\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv');

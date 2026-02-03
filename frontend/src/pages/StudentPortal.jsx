@@ -156,7 +156,7 @@ const StudentPortal = () => {
                     <div style={{ 
                         backgroundColor: 'white', 
                         borderRadius: '16px', 
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25), 0 8px 16px rgba(0, 0, 0, 0.15)',
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
@@ -310,7 +310,7 @@ const StudentPortal = () => {
                     <div style={{ 
                         backgroundColor: 'white', 
                         borderRadius: '16px', 
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25), 0 8px 16px rgba(0, 0, 0, 0.15)',
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
