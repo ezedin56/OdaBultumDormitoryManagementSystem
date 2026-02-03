@@ -26,6 +26,10 @@ const studentSchema = mongoose.Schema({
     phone: {
         type: String
     },
+    listNumber: {
+        type: Number,
+        required: false
+    },
     room: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Room'
