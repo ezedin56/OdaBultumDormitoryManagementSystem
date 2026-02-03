@@ -12,6 +12,7 @@ const AdminList = ({ onCreateClick }) => {
     const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
     const [selectedAdmin, setSelectedAdmin] = useState(null);
     const [showResetModal, setShowResetModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
 
     useEffect(() => {
         fetchAdmins();
@@ -102,8 +103,27 @@ const AdminList = ({ onCreateClick }) => {
             );
             setShowResetModal(false);
             setSelectedAdmin(null);
+            // Show success message
+            alert('Password reset successfully!');
+            fetchAdmins();
         } catch (error) {
             console.error('Failed to reset password:', error);
+            alert(error.response?.data?.message || 'Failed to reset password');
+        }
+    };
+
+    const handleUpdate = async (updatedData) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:5000/api/admin/admins/${selectedAdmin._id}`, 
+                updatedData,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setShowEditModal(false);
+            setSelectedAdmin(null);
+            fetchAdmins();
+        } catch (error) {
+            console.error('Failed to update admin:', error);
         }
     };
 
@@ -230,7 +250,7 @@ const AdminList = ({ onCreateClick }) => {
                                 borderBottom: '2px solid #e2e8f0'
                             }}>
                                 <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Name</th>
-                                <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Email</th>
+                                <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Username</th>
                                 <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Role</th>
                                 <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Department</th>
                                 <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Status</th>
@@ -270,36 +290,57 @@ const AdminList = ({ onCreateClick }) => {
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                            {admin.status === 'Active' ? (
+                                            {admin.email !== 'admin' && (
                                                 <button
-                                                    onClick={() => handleSuspend(admin._id)}
-                                                    title="Suspend"
+                                                    onClick={() => {
+                                                        setSelectedAdmin(admin);
+                                                        setShowEditModal(true);
+                                                    }}
+                                                    title="Edit"
                                                     style={{
                                                         padding: '0.5rem',
-                                                        border: '1px solid #fbbf24',
-                                                        background: '#fef3c7',
-                                                        color: '#92400e',
+                                                        border: '1px solid #8b5cf6',
+                                                        background: '#ede9fe',
+                                                        color: '#6d28d9',
                                                         borderRadius: '6px',
                                                         cursor: 'pointer'
                                                     }}
                                                 >
-                                                    <Ban size={16} />
+                                                    <Edit size={16} />
                                                 </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleActivate(admin._id)}
-                                                    title="Activate"
-                                                    style={{
-                                                        padding: '0.5rem',
-                                                        border: '1px solid #10b981',
-                                                        background: '#dcfce7',
-                                                        color: '#166534',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <CheckCircle size={16} />
-                                                </button>
+                                            )}
+                                            {admin.email !== 'admin' && (
+                                                admin.status === 'Active' ? (
+                                                    <button
+                                                        onClick={() => handleSuspend(admin._id)}
+                                                        title="Suspend"
+                                                        style={{
+                                                            padding: '0.5rem',
+                                                            border: '1px solid #fbbf24',
+                                                            background: '#fef3c7',
+                                                            color: '#92400e',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <Ban size={16} />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleActivate(admin._id)}
+                                                        title="Activate"
+                                                        style={{
+                                                            padding: '0.5rem',
+                                                            border: '1px solid #10b981',
+                                                            background: '#dcfce7',
+                                                            color: '#166534',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <CheckCircle size={16} />
+                                                    </button>
+                                                )
                                             )}
                                             <button
                                                 onClick={() => {
@@ -318,20 +359,22 @@ const AdminList = ({ onCreateClick }) => {
                                             >
                                                 <Key size={16} />
                                             </button>
-                                            <button
-                                                onClick={() => handleDelete(admin._id)}
-                                                title="Delete"
-                                                style={{
-                                                    padding: '0.5rem',
-                                                    border: '1px solid #ef4444',
-                                                    background: '#fee2e2',
-                                                    color: '#991b1b',
-                                                    borderRadius: '6px',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {admin.email !== 'admin' && (
+                                                <button
+                                                    onClick={() => handleDelete(admin._id)}
+                                                    title="Delete"
+                                                    style={{
+                                                        padding: '0.5rem',
+                                                        border: '1px solid #ef4444',
+                                                        background: '#fee2e2',
+                                                        color: '#991b1b',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -394,6 +437,205 @@ const AdminList = ({ onCreateClick }) => {
                     onSubmit={handleResetPassword}
                 />
             )}
+
+            {/* Edit Admin Modal */}
+            {showEditModal && (
+                <EditAdminModal
+                    admin={selectedAdmin}
+                    roles={roles}
+                    onClose={() => {
+                        setShowEditModal(false);
+                        setSelectedAdmin(null);
+                    }}
+                    onSubmit={handleUpdate}
+                />
+            )}
+        </div>
+    );
+};
+
+// Edit Admin Modal Component
+const EditAdminModal = ({ admin, roles, onClose, onSubmit }) => {
+    const [formData, setFormData] = useState({
+        fullName: admin.fullName,
+        email: admin.email,
+        phone: admin.phone || '',
+        department: admin.department || '',
+        role: admin.role?._id || '',
+        status: admin.status
+    });
+
+    // Check if this is the Super Admin (email: "admin")
+    const isSuperAdmin = admin.email === 'admin';
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(formData);
+    };
+
+    return (
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+        }}>
+            <div style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                maxWidth: '600px',
+                width: '90%',
+                maxHeight: '90vh',
+                overflow: 'auto'
+            }}>
+                <h3 style={{ marginBottom: '1.5rem' }}>
+                    Edit Admin: {admin.fullName}
+                    {isSuperAdmin && (
+                        <span style={{ 
+                            marginLeft: '0.5rem',
+                            fontSize: '0.8rem',
+                            color: '#dc2626',
+                            fontWeight: 'normal'
+                        }}>
+                            (Super Admin - Limited Editing)
+                        </span>
+                    )}
+                </h3>
+                
+                {isSuperAdmin && (
+                    <div style={{
+                        background: '#fef3c7',
+                        border: '1px solid #fbbf24',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        marginBottom: '1.5rem',
+                        fontSize: '0.9rem',
+                        color: '#92400e'
+                    }}>
+                        ⚠️ Super Admin account: Only username and password can be changed. Role, status, and other fields are protected.
+                    </div>
+                )}
+                
+                <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                            Full Name *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.fullName}
+                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                            required
+                            disabled={isSuperAdmin}
+                            className="input-field"
+                            style={{ opacity: isSuperAdmin ? 0.6 : 1, cursor: isSuperAdmin ? 'not-allowed' : 'text' }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                            Email/Username *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            required
+                            className="input-field"
+                        />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                            Phone
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            disabled={isSuperAdmin}
+                            className="input-field"
+                            style={{ opacity: isSuperAdmin ? 0.6 : 1, cursor: isSuperAdmin ? 'not-allowed' : 'text' }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                            Department
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.department}
+                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                            disabled={isSuperAdmin}
+                            className="input-field"
+                            style={{ opacity: isSuperAdmin ? 0.6 : 1, cursor: isSuperAdmin ? 'not-allowed' : 'text' }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                            Role *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.role}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            required
+                            disabled={isSuperAdmin}
+                            placeholder="e.g., Manager, Supervisor, Coordinator"
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem',
+                                outline: 'none',
+                                opacity: isSuperAdmin ? 0.6 : 1,
+                                cursor: isSuperAdmin ? 'not-allowed' : 'text',
+                                backgroundColor: isSuperAdmin ? '#f3f4f6' : 'white'
+                            }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                            Status *
+                        </label>
+                        <select
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            required
+                            disabled={isSuperAdmin}
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem',
+                                outline: 'none',
+                                opacity: isSuperAdmin ? 0.6 : 1,
+                                cursor: isSuperAdmin ? 'not-allowed' : 'pointer',
+                                backgroundColor: isSuperAdmin ? '#f3f4f6' : 'white'
+                            }}
+                        >
+                            <option value="Active">Active</option>
+                            <option value="Suspended">Suspended</option>
+                            <option value="Deactivated">Deactivated</option>
+                        </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={onClose} className="btn btn-secondary">
+                            Cancel
+                        </button>
+                        <button type="submit" className="btn btn-primary">
+                            Update Admin
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };
@@ -402,13 +644,18 @@ const AdminList = ({ onCreateClick }) => {
 const ResetPasswordModal = ({ admin, onClose, onSubmit }) => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setError('');
+        
         if (newPassword !== confirmPassword) {
+            setError('Passwords do not match');
             return;
         }
         if (newPassword.length < 8) {
+            setError('Password must be at least 8 characters');
             return;
         }
         onSubmit(newPassword);
@@ -435,6 +682,18 @@ const ResetPasswordModal = ({ admin, onClose, onSubmit }) => {
                 width: '90%'
             }}>
                 <h3 style={{ marginBottom: '1rem' }}>Reset Password for {admin.fullName}</h3>
+                {error && (
+                    <div style={{
+                        padding: '0.75rem',
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        borderRadius: '6px',
+                        marginBottom: '1rem',
+                        fontSize: '0.9rem'
+                    }}>
+                        {error}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -445,7 +704,13 @@ const ResetPasswordModal = ({ admin, onClose, onSubmit }) => {
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             required
-                            className="input-field"
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem'
+                            }}
                         />
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
@@ -457,7 +722,13 @@ const ResetPasswordModal = ({ admin, onClose, onSubmit }) => {
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
-                            className="input-field"
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem'
+                            }}
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>

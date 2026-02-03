@@ -2,9 +2,6 @@ import { useState, useRef } from 'react';
 import { Shield, Users, Key, Activity, Clock, Settings, Lock } from 'lucide-react';
 import AdminList from './AdminManagement/AdminList';
 import CreateAdmin from './AdminManagement/CreateAdmin';
-import RolesPermissions from './AdminManagement/RolesPermissions';
-import ActivityLogs from './AdminManagement/ActivityLogs';
-import LoginHistory from './AdminManagement/LoginHistory';
 import SecuritySettings from './AdminManagement/SecuritySettings';
 
 const AdminManagement = () => {
@@ -14,9 +11,6 @@ const AdminManagement = () => {
 
     const tabs = [
         { id: 'admins', label: 'Admin List', icon: <Users size={18} /> },
-        { id: 'roles', label: 'Roles & Permissions', icon: <Key size={18} /> },
-        { id: 'activity', label: 'Activity Logs', icon: <Activity size={18} /> },
-        { id: 'login-history', label: 'Login History', icon: <Clock size={18} /> },
         { id: 'security', label: 'Security Settings', icon: <Lock size={18} /> }
     ];
 
@@ -24,12 +18,6 @@ const AdminManagement = () => {
         switch (activeTab) {
             case 'admins':
                 return <AdminList key={refreshKey} onCreateClick={() => setShowCreateModal(true)} />;
-            case 'roles':
-                return <RolesPermissions />;
-            case 'activity':
-                return <ActivityLogs />;
-            case 'login-history':
-                return <LoginHistory />;
             case 'security':
                 return <SecuritySettings />;
             default:

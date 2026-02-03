@@ -9,11 +9,17 @@ const adminSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
+        required: [true, 'Email/Username is required'],
         unique: true,
         lowercase: true,
         trim: true,
-        match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email']
+        validate: {
+            validator: function(v) {
+                // Allow either email format or simple username (alphanumeric, underscore, hyphen)
+                return /^\S+@\S+\.\S+$/.test(v) || /^[a-zA-Z0-9_-]+$/.test(v);
+            },
+            message: 'Please provide a valid email or username'
+        }
     },
     password: {
         type: String,

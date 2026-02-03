@@ -13,29 +13,14 @@ const CreateAdmin = ({ onClose, onSuccess }) => {
         role: '',
         customPermissions: []
     });
-    const [roles, setRoles] = useState([]);
     const [permissions, setPermissions] = useState([]);
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
-    const [selectedRoleId, setSelectedRoleId] = useState('');
 
     useEffect(() => {
-        fetchRoles();
         fetchPermissions();
     }, []);
-
-    const fetchRoles = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const { data } = await axios.get('http://localhost:5000/api/admin/roles', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setRoles(data.data);
-        } catch (error) {
-            console.error('Error fetching roles:', error);
-        }
-    };
 
     const fetchPermissions = async () => {
         try {
@@ -47,12 +32,6 @@ const CreateAdmin = ({ onClose, onSuccess }) => {
         } catch (error) {
             console.error('Error fetching permissions:', error);
         }
-    };
-
-    const handleRoleToggle = (roleId) => {
-        setSelectedRoleId(roleId);
-        setFormData(prev => ({ ...prev, role: roleId }));
-        setErrors(prev => ({ ...prev, role: '' }));
     };
 
     const handleChange = (e) => {
@@ -91,8 +70,7 @@ const CreateAdmin = ({ onClose, onSuccess }) => {
         const newErrors = {};
         
         if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
-        if (!formData.email.trim()) newErrors.email = 'Email is required';
-        if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = 'Invalid email format';
+        if (!formData.email.trim()) newErrors.email = 'Username is required';
         if (!formData.password) newErrors.password = 'Password is required';
         if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
         if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
@@ -110,12 +88,77 @@ const CreateAdmin = ({ onClose, onSuccess }) => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/admin/admins', formData, {
+            let roleId = formData.role;
+            
+            // Check if role is a text name (not a MongoDB ObjectId)
+            const isObjectId = /^[0-9a-fA-F]{24}$/.test(formData.role);
+            
+            if (!isObjectId) {
+                // It's a role name, we need to find or create it
+                try {
+                    // Fetch all existing roles
+                    const rolesResponse = await axios.get('http://localhost:5000/api/admin/roles', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    
+                    // Check if role with this name already exists
+                    const existingRole = rolesResponse.data.data.find(
+                        r => r.name.toLowerCase() === formData.role.trim().toLowerCase()
+                    );
+                    
+                    if (existingRole) {
+                        // Use existing role ID
+                        roleId = existingRole._id;
+                        
+                        // If custom permissions are provided, update the role
+                        if (formData.customPermissions && formData.customPermissions.length > 0) {
+                            await axios.put(`http://localhost:5000/api/admin/roles/${roleId}`, {
+                                permissions: [...new Set([...existingRole.permissions, ...formData.customPermissions])]
+                            }, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                        }
+                    } else {
+                        // Create new role with the provided name and permissions
+                        const newRoleResponse = await axios.post('http://localhost:5000/api/admin/roles', {
+                            name: formData.role.trim(),
+                            description: `${formData.role.trim()} role`,
+                            permissions: formData.customPermissions || []
+                        }, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        roleId = newRoleResponse.data.data._id;
+                    }
+                } catch (roleError) {
+                    console.error('Role creation/fetch error:', roleError);
+                    const errorMsg = roleError.response?.data?.message || 'Failed to create/find role';
+                    alert(`Error: ${errorMsg}`);
+                    setLoading(false);
+                    return;
+                }
+            }
+            
+            // Create the admin with the role ID
+            const adminData = {
+                fullName: formData.fullName,
+                email: formData.email,
+                password: formData.password,
+                phone: formData.phone,
+                department: formData.department,
+                role: roleId,
+                customPermissions: formData.customPermissions || []
+            };
+            
+            await axios.post('http://localhost:5000/api/admin/admins', adminData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            
+            alert('Admin created successfully!');
             onSuccess();
         } catch (error) {
             console.error('Failed to create admin:', error);
+            const errorMsg = error.response?.data?.message || 'Failed to create admin. Please try again.';
+            alert(`Error: ${errorMsg}`);
         } finally {
             setLoading(false);
         }
@@ -195,15 +238,23 @@ const CreateAdmin = ({ onClose, onSuccess }) => {
 
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
-                                        Email *
+                                        Username *
                                     </label>
                                     <input
-                                        type="email"
+                                        type="text"
                                         name="email"
                                         value={formData.email}
                                         onChange={handleChange}
-                                        className="input-field"
-                                        style={{ borderColor: errors.email ? '#ef4444' : '#e2e8f0' }}
+                                        placeholder="e.g., john_admin, manager01"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            border: '2px solid',
+                                            borderColor: errors.email ? '#ef4444' : '#e2e8f0',
+                                            borderRadius: '8px',
+                                            fontSize: '1rem',
+                                            outline: 'none'
+                                        }}
                                     />
                                     {errors.email && <span style={{ color: '#ef4444', fontSize: '0.8rem' }}>{errors.email}</span>}
                                 </div>
@@ -283,82 +334,33 @@ const CreateAdmin = ({ onClose, onSuccess }) => {
                             </div>
                         </div>
 
-                        {/* Role Selection */}
+                        {/* Role Name */}
                         <div style={{ marginBottom: '2rem' }}>
-                            <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 600 }}>Role Assignment *</h3>
+                            <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 600 }}>Role Name *</h3>
                             <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                                Select one role for this admin
+                                Enter the role name for this admin
                             </p>
                             {errors.role && <span style={{ color: '#ef4444', fontSize: '0.9rem', display: 'block', marginBottom: '1rem' }}>{errors.role}</span>}
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
-                                {roles.map(role => (
-                                    <div
-                                        key={role._id}
-                                        onClick={() => handleRoleToggle(role._id)}
-                                        style={{
-                                            padding: '1.25rem',
-                                            border: '2px solid',
-                                            borderColor: selectedRoleId === role._id ? '#8b5cf6' : '#e2e8f0',
-                                            background: selectedRoleId === role._id ? '#f5f3ff' : 'white',
-                                            borderRadius: '12px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            position: 'relative'
-                                        }}
-                                    >
-                                        {/* Radio indicator */}
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '1rem',
-                                            right: '1rem',
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            border: '2px solid',
-                                            borderColor: selectedRoleId === role._id ? '#8b5cf6' : '#cbd5e1',
-                                            background: 'white',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                            {selectedRoleId === role._id && (
-                                                <div style={{
-                                                    width: '10px',
-                                                    height: '10px',
-                                                    borderRadius: '50%',
-                                                    background: '#8b5cf6'
-                                                }} />
-                                            )}
-                                        </div>
-
-                                        <h4 style={{ 
-                                            margin: '0 0 0.5rem 0', 
-                                            fontSize: '1.1rem', 
-                                            fontWeight: 700,
-                                            color: selectedRoleId === role._id ? '#7c3aed' : '#1e293b'
-                                        }}>
-                                            {role.name}
-                                        </h4>
-                                        <p style={{ 
-                                            margin: 0, 
-                                            fontSize: '0.85rem', 
-                                            color: '#64748b',
-                                            lineHeight: '1.5'
-                                        }}>
-                                            {role.description || 'No description'}
-                                        </p>
-                                        <div style={{ 
-                                            marginTop: '0.75rem', 
-                                            fontSize: '0.75rem', 
-                                            color: '#8b5cf6',
-                                            fontWeight: 600
-                                        }}>
-                                            {role.permissions?.length || 0} permissions
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <input
+                                type="text"
+                                name="roleName"
+                                value={formData.role}
+                                onChange={(e) => {
+                                    setFormData(prev => ({ ...prev, role: e.target.value }));
+                                    setErrors(prev => ({ ...prev, role: '' }));
+                                }}
+                                placeholder="e.g., Manager, Supervisor, Coordinator"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    border: '2px solid',
+                                    borderColor: errors.role ? '#ef4444' : '#e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    outline: 'none'
+                                }}
+                            />
                         </div>
 
                         {/* Custom Permissions */}

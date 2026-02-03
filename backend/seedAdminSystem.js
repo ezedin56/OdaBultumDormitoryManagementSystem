@@ -99,7 +99,7 @@ const seedAdminSystem = async () => {
         
         const superAdmin = await Admin.create({
             fullName: 'System Administrator',
-            email: 'admin@system.local',
+            email: 'admin',
             password: 'password123',
             phone: '+251-911-000-000',
             department: 'IT Department',
@@ -108,9 +108,9 @@ const seedAdminSystem = async () => {
             createdBy: superAdminUserId
         });
         console.log('✅ Super admin created');
-        console.log('   Email: admin@system.local');
+        console.log('   Username: admin');
         console.log('   Password: password123');
-        console.log('   Note: This matches the existing admin user credentials\n');
+        console.log('   Note: Login with username "admin" and password "password123"\n');
         
         // 4. Create sample admins
         console.log('👥 Creating sample admins...');
@@ -157,11 +157,11 @@ const seedAdminSystem = async () => {
         console.log('   - 4 Admins created');
         console.log('   - Security settings initialized');
         console.log('\n🔐 Login Credentials:');
-        console.log('   Super Admin: admin@system.local / password123');
+        console.log('   Super Admin: admin / password123');
         console.log('   Standard Admin: admin@obu.edu.et / Admin@123');
         console.log('   Standard Admin: john@obu.edu.et / Admin@123');
         console.log('   Viewer: jane@obu.edu.et / Admin@123\n');
-        console.log('⚠️  IMPORTANT: The Super Admin uses the same credentials as the existing system admin user\n');
+        console.log('⚠️  IMPORTANT: Use username "admin" (not email) for Super Admin login\n');
         
         process.exit(0);
     } catch (error) {

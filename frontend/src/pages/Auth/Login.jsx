@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, User, LogIn, Mail, Phone } from 'lucide-react';
@@ -7,18 +7,8 @@ const Login = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { login, user } = useAuth();
+    const { login } = useAuth();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (user) {
-            if (user.isAdmin || user.role?.name) {
-                navigate('/admin/dashboard');
-            } else {
-                navigate('/');
-            }
-        }
-    }, [user, navigate]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,7 +20,14 @@ const Login = () => {
         setIsLoading(true);
         try {
             const result = await login(formData.username, formData.password);
-            if (!result.success) {
+            if (result.success) {
+                // Redirect based on user type
+                if (result.isAdmin) {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/');
+                }
+            } else {
                 setError(result.message);
             }
         } finally {

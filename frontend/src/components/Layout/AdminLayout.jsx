@@ -6,9 +6,15 @@ import axios from 'axios';
 
 const AdminLayout = () => {
     const location = useLocation();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
     const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+    // Get user permissions
+    const userPermissions = user?.permissions || [];
+    const hasPermission = (permission) => {
+        return userPermissions.includes('*') || userPermissions.includes(permission);
+    };
 
     useEffect(() => {
         const checkMaintenanceMode = async () => {
@@ -50,7 +56,7 @@ const AdminLayout = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        window.location.href = '/login'; // Force full page redirect
     };
 
     const isActive = (path) => location.pathname.includes(path);
@@ -78,13 +84,27 @@ const AdminLayout = () => {
 
                 <nav style={{ flex: 1, padding: 'var(--spacing-md)' }}>
                     <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <NavItem to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" active={isActive('dashboard')} />
-                        <NavItem to="/admin/students" icon={<Users size={20} />} label="Students" active={isActive('students')} />
-                        <NavItem to="/admin/dorms" icon={<Building size={20} />} label="Dormitories" active={isActive('dorms')} />
-                        <NavItem to="/admin/inventory" icon={<Package size={20} />} label="Inventory" active={isActive('inventory')} />
-                        <NavItem to="/admin/reports" icon={<FileText size={20} />} label="Reports" active={isActive('reports')} />
-                        <NavItem to="/admin/settings" icon={<Settings size={20} />} label="Settings" active={isActive('settings')} />
-                        <NavItem to="/admin/admin-management" icon={<Shield size={20} />} label="Admin Management" active={isActive('admin-management')} />
+                        {hasPermission('dashboard.view') && (
+                            <NavItem to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" active={isActive('dashboard')} />
+                        )}
+                        {hasPermission('students.view') && (
+                            <NavItem to="/admin/students" icon={<Users size={20} />} label="Students" active={isActive('students')} />
+                        )}
+                        {hasPermission('dorms.view') && (
+                            <NavItem to="/admin/dorms" icon={<Building size={20} />} label="Dormitories" active={isActive('dorms')} />
+                        )}
+                        {hasPermission('inventory.view') && (
+                            <NavItem to="/admin/inventory" icon={<Package size={20} />} label="Inventory" active={isActive('inventory')} />
+                        )}
+                        {hasPermission('reports.view') && (
+                            <NavItem to="/admin/reports" icon={<FileText size={20} />} label="Reports" active={isActive('reports')} />
+                        )}
+                        {hasPermission('admins.view') && (
+                            <NavItem to="/admin/admin-management" icon={<Shield size={20} />} label="Admin Management" active={isActive('admin-management')} />
+                        )}
+                        {hasPermission('dashboard.view') && (
+                            <NavItem to="/admin/settings" icon={<Settings size={20} />} label="Settings" active={isActive('settings')} />
+                        )}
                     </ul>
                 </nav>
 

@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            // Try admin login first
+            // Try admin login first (try with both email and username)
             try {
                 const { data } = await axios.post('http://localhost:5000/api/admin/auth/login', { 
                     email: username, 
@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }) => {
                 setUser({ ...data.admin, isAdmin: true });
                 return { success: true, isAdmin: true };
             } catch (adminError) {
+                console.log('Admin login failed, trying regular user login...');
                 // If admin login fails, try regular user login
                 const config = {
                     headers: {

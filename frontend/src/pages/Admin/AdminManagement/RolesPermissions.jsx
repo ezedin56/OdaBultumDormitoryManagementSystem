@@ -19,7 +19,9 @@ const RolesPermissions = () => {
             const { data } = await axios.get('http://localhost:5000/api/admin/roles', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setRoles(data.data);
+            // Filter out Super Admin role
+            const filteredRoles = data.data.filter(role => role.name !== 'Super Admin');
+            setRoles(filteredRoles);
         } catch (error) {
             console.error('Error fetching roles:', error);
         } finally {
@@ -184,22 +186,20 @@ const RolesPermissions = () => {
                                 <Edit size={16} />
                                 Edit
                             </button>
-                            {!role.isSystemRole && (
-                                <button
-                                    onClick={() => handleDelete(role._id, role.name)}
-                                    className="btn btn-secondary"
-                                    style={{ 
-                                        flex: 1, 
-                                        gap: '0.5rem', 
-                                        fontSize: '0.9rem',
-                                        color: '#ef4444',
-                                        borderColor: '#ef4444'
-                                    }}
-                                >
-                                    <Trash2 size={16} />
-                                    Delete
-                                </button>
-                            )}
+                            <button
+                                onClick={() => handleDelete(role._id, role.name)}
+                                className="btn btn-secondary"
+                                style={{ 
+                                    flex: 1, 
+                                    gap: '0.5rem', 
+                                    fontSize: '0.9rem',
+                                    color: '#ef4444',
+                                    borderColor: '#ef4444'
+                                }}
+                            >
+                                <Trash2 size={16} />
+                                Delete
+                            </button>
                         </div>
                     </div>
                 ))}
@@ -353,8 +353,15 @@ const RoleModal = ({ role, onClose, onSuccess }) => {
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                className="input-field"
-                                disabled={role?.isSystemRole}
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    border: '2px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    outline: 'none'
+                                }}
                             />
                         </div>
 
@@ -365,8 +372,17 @@ const RoleModal = ({ role, onClose, onSuccess }) => {
                             <textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                className="input-field"
                                 rows={3}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    border: '2px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    outline: 'none',
+                                    resize: 'vertical',
+                                    fontFamily: 'inherit'
+                                }}
                             />
                         </div>
 

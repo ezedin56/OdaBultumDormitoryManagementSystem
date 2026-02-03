@@ -139,11 +139,15 @@ exports.updateRole = async (req, res) => {
             });
         }
         
-        // Prevent editing system roles
-        if (role.isSystemRole) {
+        // Check if admin has Super Admin role (can edit system roles)
+        const admin = await Admin.findById(req.admin._id).populate('role');
+        const isSuperAdmin = admin.role?.permissions?.includes('*');
+        
+        // Prevent editing system roles unless Super Admin
+        if (role.isSystemRole && !isSuperAdmin) {
             return res.status(403).json({
                 success: false,
-                message: 'Cannot edit system roles'
+                message: 'Only Super Admin can edit system roles'
             });
         }
         
@@ -202,11 +206,15 @@ exports.deleteRole = async (req, res) => {
             });
         }
         
-        // Prevent deleting system roles
-        if (role.isSystemRole) {
+        // Check if admin has Super Admin role
+        const admin = await Admin.findById(req.admin._id).populate('role');
+        const isSuperAdmin = admin.role?.permissions?.includes('*');
+        
+        // Prevent deleting system roles unless Super Admin
+        if (role.isSystemRole && !isSuperAdmin) {
             return res.status(403).json({
                 success: false,
-                message: 'Cannot delete system roles'
+                message: 'Only Super Admin can delete system roles'
             });
         }
         

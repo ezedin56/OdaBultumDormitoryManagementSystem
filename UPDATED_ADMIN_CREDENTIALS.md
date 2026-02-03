@@ -9,10 +9,10 @@
 - Role: Super Admin
 
 **CHANGED TO:**
-- Email: admin@system.local
+- Username: admin
 - Password: password123
 - Role: Super Admin
-- **Note:** This matches your existing system admin user (username: admin)
+- **Note:** Login with username "admin" (not an email address)
 
 ### Standard Admin Accounts
 
@@ -41,7 +41,7 @@
 ### As Super Admin (Full Access)
 1. Go to: http://localhost:5173/login
 2. Enter:
-   - **Email:** admin@system.local
+   - **Username:** admin
    - **Password:** password123
 3. You'll have full access to everything
 
@@ -67,7 +67,7 @@
 
 ```
 ┌─────────────────────────────────────────┐
-│  Super Admin (admin@system.local)       │
+│  Super Admin (admin)                    │
 │  - Full system access                   │
 │  - All permissions (*)                  │
 │  - Can manage everything                │
@@ -93,7 +93,7 @@
 
 ## 🔑 Permission Differences
 
-### Super Admin (admin@system.local)
+### Super Admin (admin)
 ✅ View/Create/Edit/Delete Admins
 ✅ Suspend/Activate Admins
 ✅ Reset Passwords
@@ -130,9 +130,10 @@
 
 ## ⚠️ Important Notes
 
-1. **Super Admin Credentials Match System Admin**
-   - The Super Admin (admin@system.local / password123) uses the same credentials as your existing system admin user
-   - This ensures consistency across the system
+1. **Super Admin Uses Username (Not Email)**
+   - Username: admin
+   - Password: password123
+   - Login with username "admin" (not an email address)
 
 2. **admin@obu.edu.et is NO LONGER Super Admin**
    - Changed to Standard Admin role
@@ -144,7 +145,7 @@
    - Use Viewer for read-only access
 
 4. **Password Policy**
-   - Super Admin: password123 (matches existing system)
+   - Super Admin: password123
    - Other Admins: Admin@123 (meets security requirements)
 
 ---
@@ -153,7 +154,7 @@
 
 1. **Login as Super Admin:**
    ```
-   Email: admin@system.local
+   Username: admin
    Password: password123
    ```
    - Go to Admin Management → Security Settings
@@ -190,7 +191,7 @@ npm run seed-admin
 
 ## ✅ Summary
 
-- ✅ Super Admin: admin@system.local / password123
+- ✅ Super Admin: admin / password123
 - ✅ Standard Admin: admin@obu.edu.et / Admin@123
 - ✅ Standard Admin: john@obu.edu.et / Admin@123
 - ✅ Viewer: jane@obu.edu.et / Admin@123
