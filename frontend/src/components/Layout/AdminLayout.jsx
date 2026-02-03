@@ -1,10 +1,18 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Building, Wrench, FileText, LogOut, Package } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const AdminLayout = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const isActive = (path) => location.pathname.includes(path);
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -27,7 +35,7 @@ const AdminLayout = () => {
                 </nav>
 
                 <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--border-color)' }}>
-                    <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem', color: 'var(--color-danger)', borderColor: 'transparent' }}>
+                    <button onClick={handleLogout} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem', color: 'var(--color-danger)', borderColor: 'transparent' }}>
                         <LogOut size={20} />
                         Logout
                     </button>

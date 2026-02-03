@@ -1,10 +1,18 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, TrendingUp, FileText, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const ManagerLayout = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const isActive = (path) => location.pathname.includes(path);
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -31,7 +39,7 @@ const ManagerLayout = () => {
                 </nav>
 
                 <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid #e9d5ff' }}>
-                    <button className="btn btn-secondary" style={{
+                    <button onClick={handleLogout} className="btn btn-secondary" style={{
                         width: '100%',
                         justifyContent: 'flex-start',
                         gap: '0.75rem',
