@@ -95,12 +95,31 @@ const Dorms = () => {
                 fetchRooms();
                 setShowBlockModal(false);
                 setActiveTab(blockForm.name);
+                alert('Block updated successfully!');
             } catch (error) {
                 alert('Failed to update block');
             }
         } else {
-            // Just close modal - rooms will be added to this block
-            setShowBlockModal(false);
+            // Create a new block by creating a placeholder room
+            try {
+                // Create first room in the new block
+                await axios.post('http://localhost:5000/api/dorms', {
+                    building: blockForm.name,
+                    roomNumber: '101',
+                    floor: 1,
+                    type: 'Quad',
+                    capacity: 4,
+                    gender: blockForm.gender,
+                    status: 'Available'
+                });
+                
+                fetchRooms();
+                setShowBlockModal(false);
+                setActiveTab(blockForm.name);
+                alert(`Block "${blockForm.name}" created successfully! You can now add more rooms.`);
+            } catch (error) {
+                alert('Failed to create block: ' + (error.response?.data?.message || error.message));
+            }
         }
     };
 
