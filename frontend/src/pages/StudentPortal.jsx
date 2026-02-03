@@ -105,7 +105,7 @@ const StudentPortal = () => {
         }}>
             {/* Minimal Header */}
             <header style={{
-                backgroundColor: '#1a4d2e', // Deep Green
+                backgroundColor: '#16a085', // Vibrant Teal Green
                 padding: '1rem 2rem',
                 borderBottom: '4px solid #cca300', // Gold border correction
                 display: 'flex',
@@ -465,7 +465,7 @@ const StudentPortal = () => {
                 textAlign: 'center',
                 color: '#e5e7eb', // Light gray text
                 fontSize: '0.9rem',
-                backgroundColor: '#1a4d2e', // Deep Green matching header
+                backgroundColor: '#16a085', // Vibrant Teal Green matching header
                 borderTop: '1px solid #14532d' // Slightly darker border
             }}>
                 © 2026 Oda Bultum University - Dormitory Management System
