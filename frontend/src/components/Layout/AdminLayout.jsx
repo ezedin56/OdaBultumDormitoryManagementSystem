@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Building, FileText, LogOut, Package, Settings, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Users, Building, FileText, LogOut, Package, Settings, Shield, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -84,6 +84,7 @@ const AdminLayout = () => {
                         <NavItem to="/admin/inventory" icon={<Package size={20} />} label="Inventory" active={isActive('inventory')} />
                         <NavItem to="/admin/reports" icon={<FileText size={20} />} label="Reports" active={isActive('reports')} />
                         <NavItem to="/admin/settings" icon={<Settings size={20} />} label="Settings" active={isActive('settings')} />
+                        <NavItem to="/admin/admin-management" icon={<Shield size={20} />} label="Admin Management" active={isActive('admin-management')} />
                     </ul>
                 </nav>
 

@@ -9,6 +9,8 @@
     "import-students": "node importStudentsFromCSV.js",
     "add-blocks": "node addMoreBlocks.js",
     "seed": "node seeder.js",
+    "seed-admin": "node seedAdminSystem.js",
+    "clear-admin": "node clearAdminData.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

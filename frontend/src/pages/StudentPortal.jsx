@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-    Search, Mail, RotateCcw, Phone, ArrowRight, User, Home, MapPin,
-    Printer, Download, Share2, Copy, Building, Users, ChevronDown, AlertTriangle
+    Search, Mail, RotateCcw, Phone, User, Home, MapPin,
+    Download, Copy, Building, Users, AlertTriangle, Printer, Share2, ChevronDown
 } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -75,7 +75,7 @@ const StudentPortal = () => {
                 padding: '1rem 2rem', 
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)', 
                 display: 'flex', 
-                justifyContent: 'space-between', 
+                justifyContent: 'center', 
                 alignItems: 'center', 
                 position: 'sticky',
                 top: 0,
@@ -98,51 +98,6 @@ const StudentPortal = () => {
                         <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>Dormitory Placement Viewer</p>
                     </div>
                 </div>
-                <button
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // Use setTimeout to ensure navigation happens after event handling
-                        setTimeout(() => {
-                            navigate('/login');
-                        }, 0);
-                    }}
-                    type="button"
-                    style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        color: '#6b7280', 
-                        fontSize: '0.9rem',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        fontFamily: 'inherit',
-                        fontWeight: '500',
-                        position: 'relative',
-                        zIndex: 10,
-                        WebkitTapHighlightColor: 'transparent',
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        touchAction: 'manipulation',
-                        pointerEvents: 'auto'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                        e.currentTarget.style.borderColor = '#C5A036';
-                        e.currentTarget.style.color = '#C5A036';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                        e.currentTarget.style.color = '#6b7280';
-                    }}
-                >
-                    Login <ArrowRight size={16} />
-                </button>
             </header>
 
             {/* Maintenance Mode Banner */}
