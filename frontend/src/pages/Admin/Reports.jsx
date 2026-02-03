@@ -9,21 +9,46 @@ const Reports = () => {
     const generatePDF = async (gender) => {
         setLoading(true);
         try {
-            const response = await axios.get(`/api/students/report/pdf?gender=${gender}`, {
-                responseType: 'blob'
+            const genderParam = gender ? `?gender=${gender}` : '';
+            const fileName = gender === 'M' ? 'male' : gender === 'F' ? 'female' : 'all';
+            
+            // Use fetch instead of axios for better download handling
+            const response = await fetch(`http://localhost:5000/api/students/report/pdf${genderParam}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/pdf',
+                }
             });
             
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to generate PDF');
+            }
+            
+            // Get the blob from response
+            const blob = await response.blob();
+            
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `students_${gender}_report.pdf`);
+            link.download = `students_${fileName}_report.pdf`;
+            link.style.display = 'none';
+            
+            // Append to body, click, and remove
             document.body.appendChild(link);
             link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+            
+            alert('PDF report downloaded successfully!');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            alert('Failed to generate PDF report');
+            alert('Failed to generate PDF report: ' + error.message + '\n\nPlease ensure:\n1. Backend server is running\n2. Restart the backend server after installing pdfkit');
         } finally {
             setLoading(false);
         }
@@ -32,21 +57,46 @@ const Reports = () => {
     const generateCSV = async (gender) => {
         setLoading(true);
         try {
-            const response = await axios.get(`/api/students/report/csv?gender=${gender}`, {
-                responseType: 'blob'
+            const genderParam = gender ? `?gender=${gender}` : '';
+            const fileName = gender === 'M' ? 'male' : gender === 'F' ? 'female' : 'all';
+            
+            // Use fetch instead of axios for better download handling
+            const response = await fetch(`http://localhost:5000/api/students/report/csv${genderParam}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/csv',
+                }
             });
             
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to generate CSV');
+            }
+            
+            // Get the blob from response
+            const blob = await response.blob();
+            
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `students_${gender}_report.csv`);
+            link.download = `students_${fileName}_report.csv`;
+            link.style.display = 'none';
+            
+            // Append to body, click, and remove
             document.body.appendChild(link);
             link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+            
+            alert('CSV report downloaded successfully!');
         } catch (error) {
             console.error('Error generating CSV:', error);
-            alert('Failed to generate CSV report');
+            alert('Failed to generate CSV report: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -66,8 +116,63 @@ const Reports = () => {
             {/* Report Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
                 
+                {/* All Students Report */}
+                <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #8b5cf6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div style={{ 
+                            width: '50px', 
+                            height: '50px', 
+                            borderRadius: '12px', 
+                            backgroundColor: '#ede9fe', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center' 
+                        }}>
+                            <Users size={24} color="#8b5cf6" />
+                        </div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '600' }}>All Students</h3>
+                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Generate reports for all students</p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <button
+                            onClick={() => generatePDF('')}
+                            disabled={loading}
+                            className="btn btn-primary"
+                            style={{ 
+                                width: '100%', 
+                                justifyContent: 'center', 
+                                gap: '0.5rem',
+                                opacity: loading ? 0.6 : 1,
+                                cursor: loading ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            <FileText size={18} />
+                            {loading ? 'Generating...' : 'Generate PDF'}
+                        </button>
+
+                        <button
+                            onClick={() => generateCSV('')}
+                            disabled={loading}
+                            className="btn btn-secondary"
+                            style={{ 
+                                width: '100%', 
+                                justifyContent: 'center', 
+                                gap: '0.5rem',
+                                opacity: loading ? 0.6 : 1,
+                                cursor: loading ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            <FileSpreadsheet size={18} />
+                            {loading ? 'Generating...' : 'Generate CSV'}
+                        </button>
+                    </div>
+                </div>
+
                 {/* Male Students Report */}
-                <div className="card" style={{ padding: '2rem' }}>
+                <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #3b82f6' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div style={{ 
                             width: '50px', 
@@ -122,7 +227,7 @@ const Reports = () => {
                 </div>
 
                 {/* Female Students Report */}
-                <div className="card" style={{ padding: '2rem' }}>
+                <div className="card" style={{ padding: '2rem', borderLeft: '4px solid #ec4899' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div style={{ 
                             width: '50px', 
