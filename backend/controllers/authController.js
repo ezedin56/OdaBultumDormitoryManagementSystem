@@ -58,4 +58,16 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { authUser, registerUser };
+// @desc    Get users by role
+// @route   GET /api/auth/users
+// @access  Private/Admin
+const getUsersByRole = asyncHandler(async (req, res) => {
+    const { role } = req.query;
+    
+    const query = role ? { role } : {};
+    const users = await User.find(query).select('-password');
+    
+    res.json(users);
+});
+
+module.exports = { authUser, registerUser, getUsersByRole };

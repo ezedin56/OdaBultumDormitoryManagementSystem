@@ -1,29 +1,53 @@
 import { useState, useEffect } from 'react';
-import { Building, Plus, Bed, Users, Edit2, Trash2, X, Search, UserMinus, UserPlus, Save } from 'lucide-react';
+import { Building, Plus, Edit2, Trash2, X, Save, Users, Bed, Home, Settings } from 'lucide-react';
 import axios from 'axios';
 
 const Dorms = () => {
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all');
-
+    const [activeTab, setActiveTab] = useState('');
+    const [blocks, setBlocks] = useState([]);
+    
     // Modal States
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-    const [selectedRoom, setSelectedRoom] = useState(null);
-
-    // Form State
-    const [formData, setFormData] = useState({
-        building: '', roomNumber: '', floor: '', type: 'Standard', capacity: 4, gender: 'M', status: 'Available'
+    const [showBlockModal, setShowBlockModal] = useState(false);
+    const [showRoomModal, setShowRoomModal] = useState(false);
+    const [editingBlock, setEditingBlock] = useState(null);
+    const [editingRoom, setEditingRoom] = useState(null);
+    
+    // Form States
+    const [blockForm, setBlockForm] = useState({ name: '', description: '', gender: 'M' });
+    const [roomForm, setRoomForm] = useState({
+        building: '', roomNumber: '', floor: 1, type: 'Quad', 
+        capacity: 4, gender: 'M', status: 'Available'
     });
-
-    // Student Assign State
-    const [studentSearch, setStudentSearch] = useState('');
-    const [assignLoading, setAssignLoading] = useState(false);
 
     useEffect(() => {
         fetchRooms();
     }, []);
+
+    useEffect(() => {
+        if (rooms.length > 0) {
+            const uniqueBlocks = [...new Set(rooms.map(r => r.building))];
+            const blockData = uniqueBlocks.map(building => {
+                const blockRooms = rooms.filter(r => r.building === building);
+                // All rooms in a block must have the same gender
+                const blockGender = blockRooms[0]?.gender || 'M';
+                
+                return {
+                    name: building,
+                    gender: blockGender,
+                    totalRooms: blockRooms.length,
+                    totalCapacity: blockRooms.reduce((sum, r) => sum + r.capacity, 0),
+                    occupied: blockRooms.reduce((sum, r) => sum + r.occupants.length, 0),
+                    rooms: blockRooms
+                };
+            });
+            setBlocks(blockData);
+            if (!activeTab && blockData.length > 0) {
+                setActiveTab(blockData[0].name);
+            }
+        }
+    }, [rooms]);
 
     const fetchRooms = async () => {
         try {
@@ -36,331 +60,732 @@ const Dorms = () => {
         }
     };
 
-    const handleOpenForm = (room = null) => {
-        if (room) {
-            setFormData({
-                building: room.building,
-                roomNumber: room.roomNumber,
-                floor: room.floor,
-                type: room.type,
-                capacity: room.capacity,
-                gender: room.gender,
-                status: room.status
-            });
-            setSelectedRoom(room);
-        } else {
-            setFormData({ building: '', roomNumber: '', floor: '', type: 'Standard', capacity: 4, gender: 'M', status: 'Available' });
-            setSelectedRoom(null);
+    // Block Operations
+    const handleAddBlock = () => {
+        setEditingBlock(null);
+        setBlockForm({ name: '', description: '', gender: 'M' });
+        setShowBlockModal(true);
+    };
+
+    const handleEditBlock = (block) => {
+        setEditingBlock(block);
+        setBlockForm({ name: block.name, description: block.description || '', gender: block.gender });
+        setShowBlockModal(true);
+    };
+
+    const handleSaveBlock = async () => {
+        if (!blockForm.name.trim()) {
+            alert('Block name is required');
+            return;
         }
-        setIsFormOpen(true);
+
+        if (editingBlock) {
+            // Update all rooms in this block with new name and gender
+            try {
+                const blockRooms = rooms.filter(r => r.building === editingBlock.name);
+                await Promise.all(
+                    blockRooms.map(room => 
+                        axios.put(`http://localhost:5000/api/dorms/${room._id}`, {
+                            ...room,
+                            building: blockForm.name,
+                            gender: blockForm.gender
+                        })
+                    )
+                );
+                fetchRooms();
+                setShowBlockModal(false);
+                setActiveTab(blockForm.name);
+            } catch (error) {
+                alert('Failed to update block');
+            }
+        } else {
+            // Just close modal - rooms will be added to this block
+            setShowBlockModal(false);
+        }
     };
 
-    const handleCloseForm = () => {
-        setIsFormOpen(false);
-        setSelectedRoom(null);
+    const handleDeleteBlock = async (blockName) => {
+        const blockRooms = rooms.filter(r => r.building === blockName);
+        if (blockRooms.length > 0) {
+            if (!window.confirm(`This block has ${blockRooms.length} rooms. Delete all rooms in this block?`)) {
+                return;
+            }
+            try {
+                await Promise.all(blockRooms.map(room => axios.delete(`http://localhost:5000/api/dorms/${room._id}`)));
+                fetchRooms();
+                setActiveTab(blocks[0]?.name || '');
+            } catch (error) {
+                alert('Failed to delete block');
+            }
+        }
     };
 
-    const handleFormSubmit = async (e) => {
+    // Room Operations
+    const handleAddRoom = () => {
+        setEditingRoom(null);
+        // Set room gender to match the block gender
+        const blockGender = activeBlock?.gender || 'M';
+        setRoomForm({
+            building: activeTab || blockForm.name,
+            roomNumber: '', floor: 1, type: 'Quad',
+            capacity: 4, gender: blockGender, status: 'Available'
+        });
+        setShowRoomModal(true);
+    };
+
+    const handleEditRoom = (room) => {
+        setEditingRoom(room);
+        setRoomForm({
+            building: room.building,
+            roomNumber: room.roomNumber,
+            floor: room.floor,
+            type: room.type,
+            capacity: room.capacity,
+            gender: room.gender,
+            status: room.status
+        });
+        setShowRoomModal(true);
+    };
+
+    const handleSaveRoom = async (e) => {
         e.preventDefault();
         try {
-            if (selectedRoom) {
-                await axios.put(`http://localhost:5000/api/dorms/${selectedRoom._id}`, formData);
+            if (editingRoom) {
+                await axios.put(`http://localhost:5000/api/dorms/${editingRoom._id}`, roomForm);
             } else {
-                await axios.post('http://localhost:5000/api/dorms', formData);
+                await axios.post('http://localhost:5000/api/dorms', roomForm);
             }
             fetchRooms();
-            handleCloseForm();
+            setShowRoomModal(false);
         } catch (error) {
             alert(error.response?.data?.message || 'Operation failed');
         }
     };
 
-    const handleDeleteRoom = async (id) => {
+    const handleDeleteRoom = async (roomId) => {
         if (window.confirm('Are you sure you want to delete this room?')) {
             try {
-                await axios.delete(`http://localhost:5000/api/dorms/${id}`);
+                await axios.delete(`http://localhost:5000/api/dorms/${roomId}`);
                 fetchRooms();
-                if (selectedRoom?._id === id) setIsDetailsOpen(false);
             } catch (error) {
                 alert('Failed to delete room');
             }
         }
     };
 
-    const handleAssignStudent = async (e) => {
-        e.preventDefault();
-        if (!studentSearch) return;
+    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
 
-        setAssignLoading(true);
-        try {
-            // First lookup student by ID to get MongoID (simple implementation logic)
-            // Ideally we'd have a dropdown, but direct ID lookup is robust for admins
-            const lookupRes = await axios.post('http://localhost:5000/api/students/lookup', { studentId: studentSearch });
-            const student = lookupRes.data;
-
-            await axios.post(`http://localhost:5000/api/dorms/${selectedRoom._id}/assign`, { studentId: student._id });
-
-            // Refresh room data
-            const roomRes = await axios.get(`http://localhost:5000/api/dorms/${selectedRoom._id}`);
-            setSelectedRoom(roomRes.data); // Update modal data
-            fetchRooms(); // Update grid
-            setStudentSearch('');
-            alert(`Assigned ${student.fullName}`);
-        } catch (error) {
-            alert(error.response?.data?.message || 'Failed to assign student');
-        } finally {
-            setAssignLoading(false);
-        }
-    };
-
-    const handleRemoveStudent = async (studentId) => {
-        if (!window.confirm('Remove this student from the room?')) return;
-        try {
-            await axios.post(`http://localhost:5000/api/dorms/${selectedRoom._id}/remove`, { studentId });
-
-            // Refresh room data
-            const roomRes = await axios.get(`http://localhost:5000/api/dorms/${selectedRoom._id}`);
-            setSelectedRoom(roomRes.data);
-            fetchRooms();
-        } catch (error) {
-            alert('Failed to remove student');
-        }
-    };
-
-    const filteredRooms = rooms.filter(room => {
-        if (filter === 'available') return room.status === 'Available';
-        if (filter === 'full') return room.status === 'Full';
-        return true;
-    });
-
-    const stats = {
-        total: rooms.length,
-        available: rooms.filter(r => r.status === 'Available').length,
-        full: rooms.filter(r => r.status === 'Full').length,
-        occupancy: rooms.length > 0 ? Math.round((rooms.reduce((sum, r) => sum + r.occupants.length, 0) / rooms.reduce((sum, r) => sum + r.capacity, 0)) * 100) : 0
-    };
-
-    if (loading) return <div>Loading...</div>;
+    const activeBlock = blocks.find(b => b.name === activeTab);
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div>
             {/* Header */}
-            <div className="flex justify-between items-center" style={{ marginBottom: 'var(--spacing-lg)' }}>
-                <div>
-                    <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Building /> Dormitory Management
-                    </h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Manage rooms, capacities, and occupants</p>
-                </div>
-                <button onClick={() => handleOpenForm()} className="btn btn-primary" style={{ gap: '0.5rem' }}>
-                    <Plus size={18} /> Add Room
-                </button>
-            </div>
-
-            {/* Stats Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-                <StatsCard label="Total Rooms" value={stats.total} />
-                <StatsCard label="Available" value={stats.available} color="var(--color-success)" />
-                <StatsCard label="Full" value={stats.full} color="var(--color-danger)" />
-                <StatsCard label="Occupancy Rate" value={`${stats.occupancy}%`} color="var(--color-primary)" />
-            </div>
-
-            {/* Filters */}
-            <div className="card" style={{ marginBottom: 'var(--spacing-lg)', display: 'flex', gap: '0.5rem' }}>
-                {['all', 'available', 'full'].map(f => (
-                    <button
-                        key={f}
-                        className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => setFilter(f)}
-                        style={{ textTransform: 'capitalize' }}
-                    >
-                        {f}
-                    </button>
-                ))}
-            </div>
-
-            {/* Rooms Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {filteredRooms.map((room) => (
-                    <div key={room._id} className="card" style={{ position: 'relative', borderLeft: `4px solid ${room.gender === 'M' ? '#3b82f6' : '#ec4899'}` }}>
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 style={{ margin: 0 }}>{room.building} - {room.roomNumber}</h3>
-                            <Badge status={room.status} />
-                        </div>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                            Floor {room.floor} • {room.type} • <b style={{ color: room.gender === 'M' ? '#2563eb' : '#db2777' }}>{room.gender === 'M' ? 'Male' : 'Female'}</b>
+            <div style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
+                            <Building size={32} /> Dormitory Management
+                        </h1>
+                        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                            Manage blocks, rooms, and occupancy
                         </p>
+                    </div>
+                    <button onClick={handleAddBlock} className="btn btn-primary" style={{ gap: '0.5rem' }}>
+                        <Plus size={18} /> Add Block
+                    </button>
+                </div>
+            </div>
 
-                        <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '4px', marginBottom: '1rem' }}>
-                            <div className="flex justify-between items-center" style={{ fontSize: '0.85rem' }}>
-                                <span className="flex items-center gap-2"><Users size={14} /> Occupants</span>
-                                <b>{room.occupants.length} / {room.capacity}</b>
-                            </div>
-                            <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '4px', overflow: 'hidden' }}>
+            {/* Overall Stats */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '1rem', 
+                marginBottom: '2rem' 
+            }}>
+                <StatCard 
+                    icon={<Home size={24} />} 
+                    label="Total Blocks" 
+                    value={blocks.length}
+                    color="#3b82f6"
+                />
+                <StatCard 
+                    icon={<Bed size={24} />} 
+                    label="Total Rooms" 
+                    value={rooms.length}
+                    color="#8b5cf6"
+                />
+                <StatCard 
+                    icon={<Users size={24} />} 
+                    label="Total Capacity" 
+                    value={rooms.reduce((sum, r) => sum + r.capacity, 0)}
+                    color="#10b981"
+                />
+                <StatCard 
+                    icon={<Users size={24} />} 
+                    label="Occupied Beds" 
+                    value={rooms.reduce((sum, r) => sum + r.occupants.length, 0)}
+                    color="#f59e0b"
+                />
+            </div>
+
+            {/* Tabs for Blocks */}
+            {blocks.length > 0 ? (
+                <>
+                    <div style={{ 
+                        display: 'flex', 
+                        gap: '0.5rem', 
+                        borderBottom: '2px solid #e5e7eb',
+                        marginBottom: '2rem',
+                        overflowX: 'auto',
+                        paddingBottom: '0.5rem'
+                    }}>
+                        {blocks.map(block => {
+                            const genderColor = block.gender === 'M' ? '#3b82f6' : '#ec4899';
+                            const genderLabel = block.gender === 'M' ? '♂ Male' : '♀ Female';
+                            
+                            return (
+                                <button
+                                    key={block.name}
+                                    onClick={() => setActiveTab(block.name)}
+                                    style={{
+                                        padding: '0.75rem 1.5rem',
+                                        border: 'none',
+                                        background: activeTab === block.name ? genderColor : 'transparent',
+                                        color: activeTab === block.name ? 'white' : 'var(--text-main)',
+                                        borderRadius: '8px 8px 0 0',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.95rem',
+                                        transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap',
+                                        position: 'relative',
+                                        borderBottom: activeTab === block.name ? `3px solid ${genderColor}` : 'none',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '0.25rem'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span>{block.name}</span>
+                                        <span style={{ 
+                                            fontSize: '0.75rem',
+                                            opacity: 0.8
+                                        }}>
+                                            ({block.rooms.length})
+                                        </span>
+                                    </div>
+                                    <span style={{ 
+                                        fontSize: '0.7rem',
+                                        opacity: activeTab === block.name ? 0.9 : 0.6,
+                                        fontWeight: 500
+                                    }}>
+                                        {genderLabel}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Active Block Content */}
+                    {activeBlock && (
+                        <div>
+                            {/* Block Info Card */}
+                            <div className="card" style={{ 
+                                marginBottom: '2rem',
+                                background: activeBlock.gender === 'M' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' :
+                                           'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                                color: 'white',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{ position: 'relative', zIndex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                                                <h2 style={{ margin: 0 }}>{activeBlock.name}</h2>
+                                                <span style={{
+                                                    background: 'rgba(255,255,255,0.25)',
+                                                    padding: '0.25rem 0.75rem',
+                                                    borderRadius: '999px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 600,
+                                                    backdropFilter: 'blur(10px)'
+                                                }}>
+                                                    {activeBlock.gender === 'M' ? '♂ Male Block' : '♀ Female Block'}
+                                                </span>
+                                            </div>
+                                            <p style={{ opacity: 0.9, marginBottom: '1rem' }}>
+                                                Block Information & Statistics
+                                            </p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button 
+                                                onClick={() => handleEditBlock(activeBlock)}
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.2)',
+                                                    border: '1px solid rgba(255,255,255,0.3)',
+                                                    color: 'white',
+                                                    padding: '0.5rem',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Settings size={18} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteBlock(activeBlock.name)}
+                                                style={{
+                                                    background: 'rgba(239,68,68,0.8)',
+                                                    border: '1px solid rgba(255,255,255,0.3)',
+                                                    color: 'white',
+                                                    padding: '0.5rem',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ 
+                                        display: 'grid', 
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                                        gap: '1rem',
+                                        marginTop: '1rem'
+                                    }}>
+                                        <BlockStat label="Total Rooms" value={activeBlock.totalRooms} />
+                                        <BlockStat label="Total Capacity" value={activeBlock.totalCapacity} />
+                                        <BlockStat label="Occupied" value={activeBlock.occupied} />
+                                        <BlockStat 
+                                            label="Occupancy Rate" 
+                                            value={`${Math.round((activeBlock.occupied / activeBlock.totalCapacity) * 100)}%`} 
+                                        />
+                                    </div>
+                                </div>
                                 <div style={{
-                                    width: `${(room.occupants.length / room.capacity) * 100}%`,
-                                    height: '100%',
-                                    background: room.status === 'Full' ? 'var(--color-danger)' : 'var(--color-success)'
+                                    position: 'absolute',
+                                    top: '-50px',
+                                    right: '-50px',
+                                    width: '200px',
+                                    height: '200px',
+                                    background: 'rgba(255,255,255,0.1)',
+                                    borderRadius: '50%'
                                 }}></div>
                             </div>
-                        </div>
 
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button onClick={() => { setSelectedRoom(room); setIsDetailsOpen(true); }} className="btn btn-secondary" style={{ flex: 1, fontSize: '0.85rem' }}>
-                                Manage Occupants
-                            </button>
-                            <button onClick={() => handleOpenForm(room)} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
-                                <Edit2 size={16} />
-                            </button>
-                            <button onClick={() => handleDeleteRoom(room._id)} className="btn btn-secondary" style={{ padding: '0.5rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}>
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Add/Edit Modal */}
-            {isFormOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2>{selectedRoom ? 'Edit Room' : 'Add New Room'}</h2>
-                            <button onClick={handleCloseForm} className="btn-icon"><X size={24} /></button>
-                        </div>
-                        <form onSubmit={handleFormSubmit}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <Input label="Building" value={formData.building} onChange={e => setFormData({ ...formData, building: e.target.value })} required />
-                                <Input label="Room Number" value={formData.roomNumber} onChange={e => setFormData({ ...formData, roomNumber: e.target.value })} required />
-                                <Input label="Floor" value={formData.floor} onChange={e => setFormData({ ...formData, floor: e.target.value })} type="number" required />
-                                <Input label="Capacity" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: e.target.value })} type="number" required />
-                                <div>
-                                    <label className="label">Gender</label>
-                                    <select className="input-field" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
-                                        <option value="M">Male</option>
-                                        <option value="F">Female</option>
-                                        <option value="Co-ed">Co-ed</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Type</label>
-                                    <select className="input-field" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                                        <option value="Standard">Standard</option>
-                                        <option value="Deluxe">Deluxe</option>
-                                        <option value="Suite">Suite</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" className="btn btn-primary mt-4 w-full">
-                                <Save size={18} style={{ marginRight: '8px' }} /> Save Room
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Details/Manage Modal */}
-            {isDetailsOpen && selectedRoom && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '600px' }}>
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h2>Room {selectedRoom.roomNumber}</h2>
-                                <p style={{ color: 'var(--text-muted)' }}>{selectedRoom.building} • {selectedRoom.occupants.length}/{selectedRoom.capacity} Occupied</p>
-                            </div>
-                            <button onClick={() => setIsDetailsOpen(false)} className="btn-icon"><X size={24} /></button>
-                        </div>
-
-                        {/* Assign Form */}
-                        <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid #e2e8f0' }}>
-                            <h4 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><UserPlus size={16} /> Assign Student</h4>
-                            <form onSubmit={handleAssignStudent} className="flex gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Enter Student ID (e.g. OBU/001/2023)"
-                                    className="input-field"
-                                    value={studentSearch}
-                                    onChange={(e) => setStudentSearch(e.target.value)}
-                                    style={{ flex: 1 }}
-                                />
-                                <button type="submit" className="btn btn-primary" disabled={assignLoading}>
-                                    {assignLoading ? '...' : 'Assign'}
+                            {/* Add Room Button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>Rooms in {activeBlock.name}</h3>
+                                <button onClick={handleAddRoom} className="btn btn-primary" style={{ gap: '0.5rem' }}>
+                                    <Plus size={18} /> Add Room
                                 </button>
-                            </form>
-                        </div>
+                            </div>
 
-                        {/* Occupants List */}
-                        <h4>Current Occupants</h4>
-                        {selectedRoom.occupants && selectedRoom.occupants.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                {selectedRoom.occupants.map(student => (
-                                    <div key={student._id} className="flex justify-between items-center p-2 border rounded" style={{ background: 'white' }}>
-                                        <div>
-                                            <strong>{student.fullName}</strong>
-                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{student.studentId} • {student.department}</div>
-                                        </div>
-                                        <button onClick={() => handleRemoveStudent(student._id)} className="btn btn-secondary" style={{ color: 'var(--color-danger)', fontSize: '0.8rem' }}>
-                                            <UserMinus size={16} /> Remove
-                                        </button>
-                                    </div>
+                            {/* Rooms Grid */}
+                            <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                                gap: '1.5rem' 
+                            }}>
+                                {activeBlock.rooms.map(room => (
+                                    <RoomCard 
+                                        key={room._id} 
+                                        room={room} 
+                                        onEdit={handleEditRoom}
+                                        onDelete={handleDeleteRoom}
+                                    />
                                 ))}
                             </div>
-                        ) : (
-                            <p style={{ fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '0.5rem' }}>No students assigned yet.</p>
-                        )}
 
-                        <div style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
-                            Room ID: {selectedRoom._id}
+                            {activeBlock.rooms.length === 0 && (
+                                <div className="card" style={{ 
+                                    textAlign: 'center', 
+                                    padding: '3rem',
+                                    color: 'var(--text-muted)'
+                                }}>
+                                    <Bed size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                                    <p>No rooms in this block yet</p>
+                                    <button onClick={handleAddRoom} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                                        Add First Room
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    )}
+                </>
+            ) : (
+                <div className="card" style={{ 
+                    textAlign: 'center', 
+                    padding: '4rem',
+                    color: 'var(--text-muted)'
+                }}>
+                    <Building size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                    <h3>No Blocks Yet</h3>
+                    <p>Create your first dormitory block to get started</p>
+                    <button onClick={handleAddBlock} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                        <Plus size={18} /> Create First Block
+                    </button>
                 </div>
             )}
 
-            {/* Inline Styles for Modals (should be in CSS but putting here for self-containment request) */}
-            <style>{`
-                .modal-overlay {
-                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;
-                }
-                .modal-content {
-                    background: white; padding: 2rem; borderRadius: 12px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;
-                    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-                }
-                .btn-icon { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 4px; }
-                .btn-icon:hover { background: #f1f5f9; color: var(--text-main); }
-                .label { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; font-weight: 500; }
-                .w-full { width: 100%; }
-            `}</style>
+            {/* Block Modal */}
+            {showBlockModal && (
+                <Modal onClose={() => setShowBlockModal(false)} title={editingBlock ? 'Edit Block' : 'Add New Block'}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSaveBlock(); }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                Block Name *
+                            </label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                value={blockForm.name}
+                                onChange={(e) => setBlockForm({ ...blockForm, name: e.target.value })}
+                                placeholder="e.g., Block A, Building 1"
+                                required
+                            />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                Block Gender *
+                            </label>
+                            <select
+                                className="input-field"
+                                value={blockForm.gender}
+                                onChange={(e) => setBlockForm({ ...blockForm, gender: e.target.value })}
+                                required
+                            >
+                                <option value="M">♂ Male Block</option>
+                                <option value="F">♀ Female Block</option>
+                            </select>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                All rooms in this block will be set to this gender
+                            </p>
+                        </div>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                Description (Optional)
+                            </label>
+                            <textarea
+                                className="input-field"
+                                value={blockForm.description}
+                                onChange={(e) => setBlockForm({ ...blockForm, description: e.target.value })}
+                                placeholder="Add any notes about this block..."
+                                rows="3"
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button type="button" onClick={() => setShowBlockModal(false)} className="btn btn-secondary">
+                                Cancel
+                            </button>
+                            <button type="submit" className="btn btn-primary" style={{ gap: '0.5rem' }}>
+                                <Save size={18} /> Save Block
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {/* Room Modal */}
+            {showRoomModal && (
+                <Modal onClose={() => setShowRoomModal(false)} title={editingRoom ? 'Edit Room' : 'Add New Room'}>
+                    <form onSubmit={handleSaveRoom}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                    Block *
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={roomForm.building}
+                                    onChange={(e) => setRoomForm({ ...roomForm, building: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                    Room Number *
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={roomForm.roomNumber}
+                                    onChange={(e) => setRoomForm({ ...roomForm, roomNumber: e.target.value })}
+                                    placeholder="101"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                    Floor *
+                                </label>
+                                <input
+                                    type="number"
+                                    className="input-field"
+                                    value={roomForm.floor}
+                                    onChange={(e) => setRoomForm({ ...roomForm, floor: parseInt(e.target.value) })}
+                                    min="1"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                    Capacity *
+                                </label>
+                                <input
+                                    type="number"
+                                    className="input-field"
+                                    value={roomForm.capacity}
+                                    onChange={(e) => setRoomForm({ ...roomForm, capacity: parseInt(e.target.value) })}
+                                    min="1"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                    Type *
+                                </label>
+                                <select
+                                    className="input-field"
+                                    value={roomForm.type}
+                                    onChange={(e) => setRoomForm({ ...roomForm, type: e.target.value })}
+                                >
+                                    <option value="Single">Single</option>
+                                    <option value="Double">Double</option>
+                                    <option value="Triple">Triple</option>
+                                    <option value="Quad">Quad</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                    Gender *
+                                </label>
+                                <select
+                                    className="input-field"
+                                    value={roomForm.gender}
+                                    onChange={(e) => setRoomForm({ ...roomForm, gender: e.target.value })}
+                                    disabled={true}
+                                    style={{ background: '#f3f4f6', cursor: 'not-allowed' }}
+                                >
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                </select>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                    Gender is set by the block
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button type="button" onClick={() => setShowRoomModal(false)} className="btn btn-secondary">
+                                Cancel
+                            </button>
+                            <button type="submit" className="btn btn-primary" style={{ gap: '0.5rem' }}>
+                                <Save size={18} /> Save Room
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
         </div>
     );
 };
 
 // Helper Components
-const StatsCard = ({ label, value, color }) => (
-    <div className="card">
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{label}</p>
-        <h2 style={{ margin: '0.5rem 0', color: color || 'inherit' }}>{value}</h2>
+const StatCard = ({ icon, label, value, color }) => (
+    <div className="card" style={{ 
+        textAlign: 'center',
+        background: 'white',
+        borderLeft: `4px solid ${color}`
+    }}>
+        <div style={{ color, marginBottom: '0.5rem' }}>{icon}</div>
+        <div style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>{value}</div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{label}</div>
     </div>
 );
 
-const Badge = ({ status }) => (
-    <span style={{
-        padding: '0.25rem 0.6rem',
-        borderRadius: '999px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        backgroundColor: status === 'Available' ? '#dcfce7' : '#fee2e2',
-        color: status === 'Available' ? '#166534' : '#991b1b',
-        border: `1px solid ${status === 'Available' ? '#bbf7d0' : '#fecaca'}`
+const BlockStat = ({ label, value }) => (
+    <div style={{ 
+        background: 'rgba(255,255,255,0.15)', 
+        padding: '0.75rem', 
+        borderRadius: '8px',
+        backdropFilter: 'blur(10px)'
     }}>
-        {status}
-    </span>
+        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginBottom: '0.25rem' }}>{label}</div>
+        <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{value}</div>
+    </div>
 );
 
-const Input = ({ label, ...props }) => (
-    <div>
-        <label className="label">{label}</label>
-        <input className="input-field" {...props} />
+const RoomCard = ({ room, onEdit, onDelete }) => {
+    const occupancyPercent = (room.occupants.length / room.capacity) * 100;
+    const genderColor = room.gender === 'M' ? '#3b82f6' : '#ec4899';
+    
+    return (
+        <div className="card" style={{ 
+            borderLeft: `4px solid ${genderColor}`,
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                <div>
+                    <h3 style={{ margin: 0, marginBottom: '0.25rem' }}>Room {room.roomNumber}</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                        Floor {room.floor} • {room.type}
+                    </p>
+                </div>
+                <div style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    background: room.status === 'Available' ? '#dcfce7' : '#fee2e2',
+                    color: room.status === 'Available' ? '#166534' : '#991b1b'
+                }}>
+                    {room.status}
+                </div>
+            </div>
+
+            <div style={{ 
+                background: '#f8fafc', 
+                padding: '0.75rem', 
+                borderRadius: '8px',
+                marginBottom: '1rem'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Occupancy</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                        {room.occupants.length} / {room.capacity}
+                    </span>
+                </div>
+                <div style={{ 
+                    width: '100%', 
+                    height: '8px', 
+                    background: '#e2e8f0', 
+                    borderRadius: '999px',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{
+                        width: `${occupancyPercent}%`,
+                        height: '100%',
+                        background: occupancyPercent >= 100 ? '#ef4444' : occupancyPercent >= 75 ? '#f59e0b' : '#10b981',
+                        transition: 'width 0.3s'
+                    }}></div>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: genderColor,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.85rem'
+                }}>
+                    {room.gender}
+                </div>
+                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                    {room.gender === 'M' ? 'Male' : 'Female'} Room
+                </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                    onClick={() => onEdit(room)} 
+                    className="btn btn-secondary" 
+                    style={{ flex: 1, gap: '0.5rem' }}
+                >
+                    <Edit2 size={16} /> Edit
+                </button>
+                <button 
+                    onClick={() => onDelete(room._id)} 
+                    className="btn btn-secondary" 
+                    style={{ 
+                        padding: '0.5rem 1rem',
+                        color: 'var(--color-danger)',
+                        borderColor: 'var(--color-danger)'
+                    }}
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const Modal = ({ children, onClose, title }) => (
+    <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        backdropFilter: 'blur(4px)'
+    }}>
+        <div className="card" style={{ 
+            width: '90%', 
+            maxWidth: '600px', 
+            maxHeight: '90vh', 
+            overflow: 'auto',
+            animation: 'slideUp 0.3s ease-out'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0 }}>{title}</h2>
+                <button 
+                    onClick={onClose}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '0.5rem',
+                        borderRadius: '6px',
+                        color: 'var(--text-muted)'
+                    }}
+                >
+                    <X size={24} />
+                </button>
+            </div>
+            {children}
+        </div>
+        <style>{`
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `}</style>
     </div>
 );
 

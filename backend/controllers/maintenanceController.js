@@ -95,10 +95,26 @@ const getMaintenanceStats = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Delete maintenance request
+// @route   DELETE /api/maintenance/:id
+// @access  Private/Admin
+const deleteMaintenanceRequest = asyncHandler(async (req, res) => {
+    const request = await MaintenanceRequest.findById(req.params.id);
+
+    if (request) {
+        await request.deleteOne();
+        res.json({ message: 'Maintenance request removed' });
+    } else {
+        res.status(404);
+        throw new Error('Request not found');
+    }
+});
+
 module.exports = {
     getMaintenanceRequests,
     createMaintenanceRequest,
     updateMaintenanceRequest,
     getMyRequests,
     getMaintenanceStats,
+    deleteMaintenanceRequest,
 };

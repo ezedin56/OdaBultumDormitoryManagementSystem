@@ -27,17 +27,24 @@ const ManagerDashboard = () => {
         <div style={{ animation: 'fadeIn 0.5s' }}>
             {/* Welcome Banner */}
             <div style={{
-                background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
                 borderRadius: '16px',
                 padding: '2rem',
                 color: 'white',
                 marginBottom: '2rem',
-                boxShadow: '0 10px 15px -3px rgba(124, 58, 237, 0.3)'
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
             }}>
-                <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', color: 'white' }}>Manager Dashboard</h1>
-                <p style={{ opacity: 0.9 }}>
-                    System-wide overview • Occupancy: {stats?.rooms?.occupancyRate}% • Active Students: {stats?.students?.assigned}
-                </p>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', color: 'white' }}>Manager Dashboard</h1>
+                    <p style={{ opacity: 0.9 }}>
+                        System-wide overview • Occupancy: {stats?.rooms?.occupancyRate}% • Active Students: {stats?.students?.assigned}
+                    </p>
+                </div>
+                {/* Decorative circles */}
+                <div style={{ position: 'absolute', top: '-20%', right: '-5%', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(251, 191, 36, 0.1)' }} />
+                <div style={{ position: 'absolute', bottom: '-40%', right: '20%', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)' }} />
             </div>
 
             {/* Stats Grid */}
@@ -46,14 +53,14 @@ const ManagerDashboard = () => {
                     title="Total Students"
                     value={stats?.students?.total || 0}
                     subtitle={`${stats?.students?.assigned || 0} assigned`}
-                    icon={<Users size={24} color="#7c3aed" />}
+                    icon={<Users size={24} color="#3b82f6" />}
                     trend="up"
                 />
                 <StatCard
                     title="Room Occupancy"
                     value={`${stats?.rooms?.occupancyRate || 0}%`}
                     subtitle={`${stats?.rooms?.full || 0}/${stats?.rooms?.total || 0} full`}
-                    icon={<Building size={24} color="#7c3aed" />}
+                    icon={<Building size={24} color="#ca8a04" />}
                     trend={stats?.rooms?.occupancyRate > 80 ? 'up' : 'down'}
                 />
                 <StatCard
@@ -79,7 +86,7 @@ const ManagerDashboard = () => {
                     <div className="card">
                         <h3 style={{ marginBottom: '1.5rem' }}>Occupancy Breakdown</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <MetricBox label="Total Rooms" value={stats?.rooms?.total || 0} color="#7c3aed" />
+                            <MetricBox label="Total Rooms" value={stats?.rooms?.total || 0} color="#3b82f6" />
                             <MetricBox label="Full Rooms" value={stats?.rooms?.full || 0} color="#10b981" />
                             <MetricBox label="Available" value={stats?.rooms?.available || 0} color="#3b82f6" />
                             <MetricBox label="Maintenance" value={stats?.rooms?.maintenance || 0} color="#dc2626" />
@@ -94,7 +101,7 @@ const ManagerDashboard = () => {
                                 label="Assigned Students"
                                 value={stats?.students?.assigned || 0}
                                 max={stats?.students?.total || 1}
-                                color="#7c3aed"
+                                color="#3b82f6"
                             />
                             <ProgressBar
                                 label="Unassigned Students"
@@ -165,7 +172,7 @@ const StatCard = ({ title, value, subtitle, icon, trend, alert }) => (
         borderLeft: alert ? '4px solid #dc2626' : 'none'
     }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-            <div style={{ padding: '0.5rem', borderRadius: '8px', backgroundColor: '#faf5ff' }}>
+            <div style={{ padding: '0.5rem', borderRadius: '8px', backgroundColor: '#f1f5f9' }}>
                 {icon}
             </div>
             {trend && (

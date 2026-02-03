@@ -5,6 +5,10 @@ const roomSchema = mongoose.Schema({
         type: String,
         required: true
     },
+    block: {
+        type: String,
+        required: false  // Optional field for blocks within buildings
+    },
     floor: {
         type: Number,
         required: true
