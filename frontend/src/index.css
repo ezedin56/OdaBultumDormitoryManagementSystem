@@ -171,3 +171,102 @@ button {
 .justify-between { justify-content: space-between; }
 .gap-2 { gap: var(--spacing-sm); }
 .gap-4 { gap: var(--spacing-md); }
+
+/* Premium Animations for Student Portal */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  10%, 30% { transform: scale(1.05); }
+  20%, 40% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 197, 24, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(245, 197, 24, 0.6); }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(248, 250, 252, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #E8C670, #C9A347);
+  borderRadius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #C9A347, #D4A017);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(201, 163, 71, 0.25);
+  color: #0F172A;
+}
+
+::-moz-selection {
+  background: rgba(201, 163, 71, 0.25);
+  color: #0F172A;
+}
+
+/* Placeholder styling */
+::placeholder {
+  color: rgba(100, 116, 139, 0.5);
+  opacity: 1;
+}
+
+:-ms-input-placeholder {
+  color: rgba(100, 116, 139, 0.5);
+}
+
+::-ms-input-placeholder {
+  color: rgba(100, 116, 139, 0.5);
+}
