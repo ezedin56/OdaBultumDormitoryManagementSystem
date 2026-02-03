@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
     Search, Mail, RotateCcw, Phone, ArrowRight, User, Home, MapPin,
-    Printer, Download, Share2, Copy, Building, Users, ChevronDown
+    Printer, Download, Share2, Copy, Building, Users, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -13,7 +13,27 @@ const StudentPortal = () => {
     const [placement, setPlacement] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [maintenanceMode, setMaintenanceMode] = useState(false);
     const navigate = useNavigate();
+
+    // Check maintenance mode
+    useEffect(() => {
+        const checkMaintenanceMode = async () => {
+            try {
+                const response = await axios.get('http://localhost:5000/api/settings');
+                if (response.data) {
+                    setMaintenanceMode(response.data.maintenanceMode);
+                }
+            } catch (error) {
+                console.error('Error checking maintenance mode:', error);
+            }
+        };
+
+        checkMaintenanceMode();
+        // Check every 30 seconds
+        const interval = setInterval(checkMaintenanceMode, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleSearch = async (e) => {
         if (e) e.preventDefault(); // Handle programmatic calls where e is undefined
@@ -125,6 +145,37 @@ const StudentPortal = () => {
                 </button>
             </header>
 
+            {/* Maintenance Mode Banner */}
+            {maintenanceMode && (
+                <div style={{
+                    background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                    color: 'white',
+                    padding: '1.5rem 2rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1rem',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    animation: 'slideDown 0.5s ease-out',
+                    textAlign: 'center',
+                    flexWrap: 'wrap'
+                }}>
+                    <AlertTriangle size={32} strokeWidth={2.5} />
+                    <div style={{ flex: 1, minWidth: '300px' }}>
+                        <strong style={{ fontSize: '1.2rem', display: 'block', marginBottom: '0.5rem' }}>
+                            🔧 SYSTEM UNDER MAINTENANCE
+                        </strong>
+                        <p style={{ margin: 0, fontSize: '1rem', opacity: 0.95, lineHeight: '1.5' }}>
+                            The dormitory management system is currently undergoing maintenance. 
+                            Some features may be temporarily unavailable. We apologize for any inconvenience.
+                        </p>
+                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', opacity: 0.9 }}>
+                            For urgent matters, please contact the administration office.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <main style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
 
                 {/* Search Card */}
@@ -132,6 +183,43 @@ const StudentPortal = () => {
                     <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '2.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', marginBottom: '2rem', borderTop: '4px solid #C5A036' }}>
                         <h2 style={{ textAlign: 'center', fontFamily: 'serif', fontSize: '2rem', marginBottom: '0.5rem', color: '#111827' }}>Find Your Dorm Placement</h2>
                         <p style={{ textAlign: 'center', color: '#6b7280', marginBottom: '2rem' }}>Enter your university ID to view your assigned accommodation</p>
+
+                        {/* Maintenance Mode Overlay */}
+                        {maintenanceMode && (
+                            <div style={{
+                                backgroundColor: '#fef2f2',
+                                border: '2px solid #fca5a5',
+                                borderRadius: '12px',
+                                padding: '2rem',
+                                marginBottom: '1.5rem',
+                                textAlign: 'center'
+                            }}>
+                                <AlertTriangle size={48} color="#dc2626" style={{ marginBottom: '1rem' }} />
+                                <h3 style={{ 
+                                    color: '#dc2626', 
+                                    fontSize: '1.3rem', 
+                                    fontWeight: '700',
+                                    marginBottom: '0.75rem'
+                                }}>
+                                    Service Temporarily Unavailable
+                                </h3>
+                                <p style={{ 
+                                    color: '#991b1b', 
+                                    fontSize: '1rem',
+                                    lineHeight: '1.6',
+                                    marginBottom: '0.5rem'
+                                }}>
+                                    The dorm placement lookup service is currently unavailable due to system maintenance.
+                                </p>
+                                <p style={{ 
+                                    color: '#7f1d1d', 
+                                    fontSize: '0.9rem',
+                                    fontWeight: '600'
+                                }}>
+                                    Please check back later or contact the administration office for assistance.
+                                </p>
+                            </div>
+                        )}
 
                         <form onSubmit={handleSearch}>
                             <div style={{ marginBottom: '1.5rem' }}>
@@ -143,24 +231,35 @@ const StudentPortal = () => {
                                     placeholder="e.g. UGPR1209/16"
                                     value={studentId}
                                     onChange={(e) => setStudentId(e.target.value)}
-                                    style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', fontSize: '1rem', outline: 'none' }}
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '0.75rem 1rem', 
+                                        borderRadius: '8px', 
+                                        border: '1px solid #d1d5db', 
+                                        backgroundColor: maintenanceMode ? '#f3f4f6' : '#f9fafb', 
+                                        fontSize: '1rem', 
+                                        outline: 'none',
+                                        cursor: maintenanceMode ? 'not-allowed' : 'text',
+                                        opacity: maintenanceMode ? 0.6 : 1
+                                    }}
                                     required
+                                    disabled={maintenanceMode}
                                 />
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || maintenanceMode}
                                 style={{
                                     width: '100%',
                                     padding: '1rem',
-                                    backgroundColor: '#C5A036',
+                                    backgroundColor: maintenanceMode ? '#9ca3af' : '#C5A036',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '8px',
                                     fontSize: '1rem',
                                     fontWeight: '600',
-                                    cursor: 'pointer',
+                                    cursor: maintenanceMode ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -168,15 +267,25 @@ const StudentPortal = () => {
                                     transition: 'background-color 0.2s',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em',
-                                    opacity: loading ? 0.7 : 1,
+                                    opacity: (loading || maintenanceMode) ? 0.7 : 1,
                                     position: 'relative',
                                     zIndex: 10,
-                                    pointerEvents: loading ? 'none' : 'auto'
+                                    pointerEvents: (loading || maintenanceMode) ? 'none' : 'auto'
                                 }}
-                                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#b8932f')}
-                                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#C5A036')}
+                                onMouseEnter={(e) => !loading && !maintenanceMode && (e.currentTarget.style.backgroundColor = '#b8932f')}
+                                onMouseLeave={(e) => !loading && !maintenanceMode && (e.currentTarget.style.backgroundColor = '#C5A036')}
                             >
-                                {loading ? 'Searching...' : <><Search size={20} /> View Placement</>}
+                                {maintenanceMode ? (
+                                    <>
+                                        <AlertTriangle size={20} /> Service Unavailable
+                                    </>
+                                ) : loading ? (
+                                    'Searching...'
+                                ) : (
+                                    <>
+                                        <Search size={20} /> View Placement
+                                    </>
+                                )}
                             </button>
                         </form>
 
@@ -376,6 +485,29 @@ const StudentPortal = () => {
                 </footer>
 
             </main>
+
+            {/* Animations */}
+            <style>{`
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
+                }
+            `}</style>
         </div>
     );
 };

@@ -27,17 +27,33 @@ export const AuthProvider = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
             };
-            const { data } = await axios.post('/api/auth/login', { username, password }, config);
+            const { data } = await axios.post('http://localhost:5000/api/auth/login', { username, password }, config);
 
             localStorage.setItem('userInfo', JSON.stringify(data));
             setUser(data);
             return { success: true };
         } catch (error) {
+            // Handle different error scenarios
+            let errorMessage = 'Invalid username or password';
+            
+            if (error.response) {
+                // Server responded with error
+                if (error.response.status === 401) {
+                    errorMessage = 'Invalid username or password';
+                } else if (error.response.data && error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                }
+            } else if (error.request) {
+                // Request made but no response
+                errorMessage = 'Cannot connect to server. Please check your connection.';
+            } else {
+                // Something else happened
+                errorMessage = 'An error occurred. Please try again.';
+            }
+            
             return {
                 success: false,
-                message: error.response && error.response.data.message
-                    ? error.response.data.message
-                    : error.message
+                message: errorMessage
             };
         }
     };

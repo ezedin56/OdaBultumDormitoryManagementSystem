@@ -1,11 +1,52 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Building, FileText, LogOut, Package } from 'lucide-react';
+import { LayoutDashboard, Users, Building, FileText, LogOut, Package, Settings, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const AdminLayout = () => {
     const location = useLocation();
     const { logout } = useAuth();
     const navigate = useNavigate();
+    const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+    useEffect(() => {
+        const checkMaintenanceMode = async () => {
+            try {
+                const userInfo = localStorage.getItem('userInfo');
+                if (!userInfo) return;
+
+                const { token } = JSON.parse(userInfo);
+                const response = await axios.get('http://localhost:5000/api/settings', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.data) {
+                    setMaintenanceMode(response.data.maintenanceMode);
+                }
+            } catch (error) {
+                console.error('Error checking maintenance mode:', error);
+            }
+        };
+
+        checkMaintenanceMode();
+        
+        // Listen for maintenance mode changes
+        const handleMaintenanceModeChange = (event) => {
+            setMaintenanceMode(event.detail.maintenanceMode);
+        };
+        window.addEventListener('maintenanceModeChanged', handleMaintenanceModeChange);
+        
+        // Check every 30 seconds
+        const interval = setInterval(checkMaintenanceMode, 30000);
+        
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('maintenanceModeChanged', handleMaintenanceModeChange);
+        };
+    }, []);
 
     const handleLogout = () => {
         logout();
@@ -42,6 +83,7 @@ const AdminLayout = () => {
                         <NavItem to="/admin/dorms" icon={<Building size={20} />} label="Dormitories" active={isActive('dorms')} />
                         <NavItem to="/admin/inventory" icon={<Package size={20} />} label="Inventory" active={isActive('inventory')} />
                         <NavItem to="/admin/reports" icon={<FileText size={20} />} label="Reports" active={isActive('reports')} />
+                        <NavItem to="/admin/settings" icon={<Settings size={20} />} label="Settings" active={isActive('settings')} />
                     </ul>
                 </nav>
 
@@ -54,8 +96,63 @@ const AdminLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main style={{ flex: 1, overflowY: 'auto', padding: 'var(--spacing-xl)', backgroundColor: 'var(--bg-color)' }}>
-                <Outlet />
+            <main style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
+                {/* Maintenance Mode Banner */}
+                {maintenanceMode && (
+                    <div style={{
+                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        animation: 'slideDown 0.3s ease-out'
+                    }}>
+                        <AlertTriangle size={24} />
+                        <div style={{ flex: 1 }}>
+                            <strong style={{ fontSize: '1rem' }}>⚠️ MAINTENANCE MODE ACTIVE</strong>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', opacity: 0.95 }}>
+                                The system is in maintenance mode. Only administrators can access the system.
+                            </p>
+                        </div>
+                        <Link 
+                            to="/admin/settings"
+                            style={{
+                                padding: '0.5rem 1rem',
+                                background: 'rgba(255,255,255,0.2)',
+                                border: '1px solid rgba(255,255,255,0.3)',
+                                borderRadius: '6px',
+                                color: 'white',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 600,
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
+                            onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+                        >
+                            Disable
+                        </Link>
+                    </div>
+                )}
+                
+                <div style={{ flex: 1, padding: 'var(--spacing-xl)' }}>
+                    <Outlet />
+                </div>
+
+                <style>{`
+                    @keyframes slideDown {
+                        from {
+                            opacity: 0;
+                            transform: translateY(-20px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+                `}</style>
             </main>
         </div>
     );

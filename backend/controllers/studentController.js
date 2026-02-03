@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Student = require('../models/Student');
 const Room = require('../models/Room');
+const SystemSettings = require('../models/SystemSettings');
 
 // @desc    Get all students
 // @route   GET /api/students
@@ -29,6 +30,13 @@ const getStudentById = asyncHandler(async (req, res) => {
 // @access  Public
 const getStudentByUniversityId = asyncHandler(async (req, res) => {
     const { studentId } = req.body;
+
+    // Check if system is in maintenance mode
+    const settings = await SystemSettings.findOne();
+    if (settings && settings.maintenanceMode) {
+        res.status(503);
+        throw new Error('System is currently under maintenance. Dorm placement lookup is temporarily unavailable. Please try again later.');
+    }
 
     // Case insensitive search
     const student = await Student.findOne({

@@ -214,7 +214,7 @@ const Login = () => {
                                             transition: 'all 0.3s ease',
                                             outline: 'none'
                                         }}
-                                        onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                        onFocus={(e) => e.target.style.borderColor = '#10b981'}
                                         onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                                     />
                                 </div>
