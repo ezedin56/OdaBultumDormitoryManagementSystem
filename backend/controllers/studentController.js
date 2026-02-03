@@ -331,79 +331,115 @@ const importStudents = asyncHandler(async (req, res) => {
 // @route   GET /api/students/report/pdf
 // @access  Private/Admin
 const generatePDFReport = asyncHandler(async (req, res) => {
-    const { gender } = req.query;
-    
-    const students = await Student.find({ gender }).populate('room').sort({ studentId: 1 });
-    
-    if (students.length === 0) {
-        res.status(404);
-        throw new Error('No students found');
+    try {
+        const PDFDocument = require('pdfkit');
+        const { gender } = req.query;
+        
+        const query = gender ? { gender } : {};
+        const students = await Student.find(query).populate('room').sort({ studentId: 1 });
+        
+        if (students.length === 0) {
+            res.status(404);
+            throw new Error('No students found');
+        }
+
+        const reportTitle = gender === 'M' ? 'Male Students Report' : 
+                           gender === 'F' ? 'Female Students Report' : 
+                           'All Students Report';
+
+        // Create a new PDF document
+        const doc = new PDFDocument({ 
+            margin: 50, 
+            size: 'A4',
+            bufferPages: true
+        });
+        
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=students_${gender || 'all'}_report.pdf`);
+        
+        // Pipe the PDF to the response
+        doc.pipe(res);
+        
+        // Add header
+        doc.fontSize(20).font('Helvetica-Bold').text('Oda Bultum University', { align: 'center' });
+        doc.fontSize(16).text('Dormitory Management System', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(14).text(reportTitle, { align: 'center' });
+        doc.fontSize(10).font('Helvetica').text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
+        doc.moveDown(2);
+        
+        // Table setup
+        let yPosition = doc.y;
+        const rowHeight = 25;
+        const colWidths = [40, 150, 100, 120, 100];
+        const colPositions = [50, 90, 240, 340, 460];
+        
+        // Draw table header
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.rect(50, yPosition, 510, rowHeight).fillAndStroke('#3b82f6', '#3b82f6');
+        doc.fillColor('white');
+        doc.text('No.', colPositions[0], yPosition + 8, { width: colWidths[0], align: 'center' });
+        doc.text('Student Name', colPositions[1], yPosition + 8, { width: colWidths[1] });
+        doc.text('Student ID', colPositions[2], yPosition + 8, { width: colWidths[2] });
+        doc.text('Department', colPositions[3], yPosition + 8, { width: colWidths[3] });
+        doc.text('Room Number', colPositions[4], yPosition + 8, { width: colWidths[4] });
+        
+        yPosition += rowHeight;
+        
+        // Draw table rows
+        doc.font('Helvetica').fillColor('black');
+        
+        students.forEach((student, index) => {
+            // Check if we need a new page
+            if (yPosition > 720) {
+                doc.addPage();
+                yPosition = 50;
+                
+                // Redraw header on new page
+                doc.fontSize(10).font('Helvetica-Bold');
+                doc.rect(50, yPosition, 510, rowHeight).fillAndStroke('#3b82f6', '#3b82f6');
+                doc.fillColor('white');
+                doc.text('No.', colPositions[0], yPosition + 8, { width: colWidths[0], align: 'center' });
+                doc.text('Student Name', colPositions[1], yPosition + 8, { width: colWidths[1] });
+                doc.text('Student ID', colPositions[2], yPosition + 8, { width: colWidths[2] });
+                doc.text('Department', colPositions[3], yPosition + 8, { width: colWidths[3] });
+                doc.text('Room Number', colPositions[4], yPosition + 8, { width: colWidths[4] });
+                
+                yPosition += rowHeight;
+                doc.font('Helvetica').fillColor('black');
+            }
+            
+            const roomNumber = student.room ? `${student.room.building}-${student.room.roomNumber}` : 'Not Assigned';
+            
+            // Alternate row colors
+            if (index % 2 === 0) {
+                doc.rect(50, yPosition, 510, rowHeight).fillAndStroke('#f9fafb', '#e5e7eb');
+            } else {
+                doc.rect(50, yPosition, 510, rowHeight).stroke('#e5e7eb');
+            }
+            
+            doc.fillColor('black').fontSize(9);
+            doc.text(index + 1, colPositions[0], yPosition + 8, { width: colWidths[0], align: 'center' });
+            doc.text(student.fullName || 'N/A', colPositions[1], yPosition + 8, { width: colWidths[1], ellipsis: true });
+            doc.text(student.studentId || 'N/A', colPositions[2], yPosition + 8, { width: colWidths[2], ellipsis: true });
+            doc.text(student.department || 'N/A', colPositions[3], yPosition + 8, { width: colWidths[3], ellipsis: true });
+            doc.text(roomNumber, colPositions[4], yPosition + 8, { width: colWidths[4], ellipsis: true });
+            
+            yPosition += rowHeight;
+        });
+        
+        // Add footer
+        doc.moveDown(2);
+        doc.fontSize(10).font('Helvetica-Bold').text(`Total Students: ${students.length}`, { align: 'center' });
+        doc.fontSize(8).font('Helvetica').text(`© ${new Date().getFullYear()} Oda Bultum University - Dormitory Management System`, { align: 'center' });
+        
+        // Finalize the PDF
+        doc.end();
+    } catch (error) {
+        console.error('PDF Generation Error:', error);
+        res.status(500).json({ message: 'Error generating PDF: ' + error.message });
     }
-
-    // Simple HTML to PDF approach
-    let html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                h1 { text-align: center; color: #333; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                th { background-color: #3b82f6; color: white; font-weight: bold; }
-                tr:nth-child(even) { background-color: #f9fafb; }
-                .header { text-align: center; margin-bottom: 30px; }
-                .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Oda Bultum University</h1>
-                <h2>Dormitory Management System</h2>
-                <h3>${gender === 'M' ? 'Male' : 'Female'} Students Report</h3>
-                <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>No.</th>
-                        <th>Student Name</th>
-                        <th>Student ID</th>
-                        <th>Department</th>
-                        <th>Room Number</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    students.forEach((student, index) => {
-        const roomNumber = student.room ? `${student.room.building}-${student.room.roomNumber}` : 'Not Assigned';
-        html += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${student.fullName}</td>
-                        <td>${student.studentId}</td>
-                        <td>${student.department}</td>
-                        <td>${roomNumber}</td>
-                    </tr>
-        `;
-    });
-
-    html += `
-                </tbody>
-            </table>
-            <div class="footer">
-                <p>Total Students: ${students.length}</p>
-                <p>&copy; ${new Date().getFullYear()} Oda Bultum University - Dormitory Management System</p>
-            </div>
-        </body>
-        </html>
-    `;
-
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `attachment; filename=students_${gender}_report.html`);
-    res.send(html);
 });
 
 // @desc    Generate CSV report for students by gender
@@ -412,7 +448,8 @@ const generatePDFReport = asyncHandler(async (req, res) => {
 const generateCSVReport = asyncHandler(async (req, res) => {
     const { gender } = req.query;
     
-    const students = await Student.find({ gender }).populate('room').sort({ studentId: 1 });
+    const query = gender ? { gender } : {};
+    const students = await Student.find(query).populate('room').sort({ studentId: 1 });
     
     if (students.length === 0) {
         res.status(404);
@@ -428,7 +465,7 @@ const generateCSVReport = asyncHandler(async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=students_${gender}_report.csv`);
+    res.setHeader('Content-Disposition', `attachment; filename=students_${gender || 'all'}_report.csv`);
     res.send(csv);
 });
 
