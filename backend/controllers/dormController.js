@@ -226,7 +226,7 @@ const autoAllocate = asyncHandler(async (req, res) => {
     }
 
     // 2. Build Room Query
-    const roomQuery = { status: { $ne: 'Under Maintenance' }, status: { $ne: 'Full' } };
+    const roomQuery = { status: { $ne: 'Under Maintenance' } };
     if (targetBuilding) roomQuery.building = targetBuilding;
     if (targetBlock) roomQuery.block = targetBlock; // Add block filter
 
