@@ -103,14 +103,11 @@ const StudentPortal = () => {
             display: 'flex',
             flexDirection: 'column'
         }}>
-            {/* Minimal Header */}
+            {/* Header */}
             <header style={{
-                backgroundColor: '#16a085', // Vibrant Teal Green
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 padding: '1rem 2rem',
-                borderBottom: '4px solid #cca300', // Gold border correction
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                 position: 'fixed',
                 top: 0,
                 left: 0,
@@ -118,41 +115,66 @@ const StudentPortal = () => {
                 zIndex: 1000,
                 height: '80px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '48px',
-                        height: '48px'
-                    }}>
-                        <img
-                            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpWVhGUfDQPtwCOjcwTE3tQiAl0obKpwvN1A&s"
-                            alt="OBU Logo"
-                            style={{
-                                width: '40px',
-                                height: '40px',
-                                objectFit: 'contain'
-                            }}
+                <div style={{
+                    maxWidth: '1400px',
+                    margin: '0 auto',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    height: '100%'
+                }}>
+                    {/* Left side - Logo and University Name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <img 
+                            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpWVhGUfDQPtwCOjcwTE3tQiAl0obKpwvN1A&s" 
+                            alt="OBU Logo" 
+                            style={{ 
+                                width: '50px', 
+                                height: '50px', 
+                                objectFit: 'contain',
+                                backgroundColor: 'white',
+                                borderRadius: '8px',
+                                padding: '4px'
+                            }} 
                         />
+                        <div>
+                            <h1 style={{ 
+                                margin: 0, 
+                                fontSize: '1.5rem', 
+                                fontWeight: '700',
+                                color: 'white'
+                            }}>
+                                Oda Bultum University
+                            </h1>
+                            <p style={{ 
+                                margin: 0, 
+                                fontSize: '0.9rem',
+                                color: 'rgba(255,255,255,0.9)'
+                            }}>
+                                Dormitory Management System
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 style={{
-                            fontSize: '1.25rem',
-                            fontWeight: '700',
-                            color: 'white',
-                            margin: 0,
-                            fontFamily: '"Playfair Display", serif',
-                            letterSpacing: '0.025em'
-                        }}>Oda Bultum University</h1>
 
+                    {/* Right side - Contact Info */}
+                    <div style={{ 
+                        display: 'flex', 
+                        gap: '1.5rem',
+                        color: 'white',
+                        fontSize: '0.9rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <User size={18} />
+                            <span>info@obu.edu.et</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <FileText size={18} />
+                            <span>+251-25-551-1234</span>
+                        </div>
                     </div>
                 </div>
-
-
             </header>
 
             <main style={{
@@ -498,12 +520,12 @@ const StudentPortal = () => {
             <footer style={{
                 padding: '1rem 2rem',
                 textAlign: 'center',
-                color: '#e5e7eb',
+                color: '#9ca3af',
                 fontSize: '0.85rem',
-                backgroundColor: '#10b981',
-                borderTop: '1px solid #059669'
+                backgroundColor: '#111827',
+                borderTop: '2px solid #10b981'
             }}>
-                © 2026 Oda Bultum University - Dormitory Management System
+                © 2026 Oda Bultum University - All rights reserved.
             </footer>
         </div>
     );
