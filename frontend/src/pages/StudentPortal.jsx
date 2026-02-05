@@ -527,6 +527,144 @@ const StudentPortal = () => {
             }}>
                 © 2026 Oda Bultum University - All rights reserved.
             </footer>
+
+            {/* Responsive Styles */}
+            <style>{`
+                /* Ensure box-sizing for all elements */
+                * {
+                    box-sizing: border-box;
+                }
+
+                /* Mobile devices (portrait phones, less than 576px) */
+                @media (max-width: 575px) {
+                    header > div {
+                        flex-direction: column !important;
+                        text-align: center !important;
+                        gap: 0.5rem !important;
+                        height: auto !important;
+                    }
+                    
+                    header {
+                        height: auto !important;
+                        padding: 1rem !important;
+                    }
+                    
+                    header h1 {
+                        font-size: 1.1rem !important;
+                    }
+                    
+                    header p {
+                        font-size: 0.75rem !important;
+                    }
+                    
+                    header img {
+                        width: 40px !important;
+                        height: 40px !important;
+                    }
+                    
+                    header > div > div:last-child {
+                        flex-direction: column !important;
+                        gap: 0.25rem !important;
+                        font-size: 0.75rem !important;
+                    }
+                    
+                    main {
+                        padding: 1rem !important;
+                        padding-top: 180px !important;
+                        padding-bottom: 60px !important;
+                    }
+                    
+                    footer {
+                        font-size: 0.7rem !important;
+                        padding: 0.75rem 1rem !important;
+                    }
+                }
+
+                /* Small devices (landscape phones, 576px and up) */
+                @media (min-width: 576px) and (max-width: 767px) {
+                    header > div {
+                        flex-direction: column !important;
+                        text-align: center !important;
+                        height: auto !important;
+                    }
+                    
+                    header {
+                        height: auto !important;
+                    }
+                    
+                    header h1 {
+                        font-size: 1.25rem !important;
+                    }
+                    
+                    header > div > div:last-child {
+                        flex-direction: row !important;
+                        gap: 1rem !important;
+                        font-size: 0.8rem !important;
+                    }
+                    
+                    main {
+                        padding-top: 160px !important;
+                    }
+                }
+
+                /* Medium devices (tablets, 768px and up) */
+                @media (min-width: 768px) and (max-width: 991px) {
+                    header h1 {
+                        font-size: 1.35rem !important;
+                    }
+                    
+                    header p {
+                        font-size: 0.85rem !important;
+                    }
+                    
+                    main {
+                        padding-top: 110px !important;
+                    }
+                }
+
+                /* Large devices (desktops, 992px and up) */
+                @media (min-width: 992px) {
+                    header > div {
+                        max-width: 1400px !important;
+                    }
+                }
+
+                /* Print styles */
+                @media print {
+                    header, footer {
+                        display: none !important;
+                    }
+                    
+                    main {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    
+                    button {
+                        display: none !important;
+                    }
+                }
+
+                /* Cross-browser compatibility */
+                input, button {
+                    -webkit-appearance: none;
+                    -moz-appearance: none;
+                    appearance: none;
+                }
+
+                /* Smooth scrolling for all browsers */
+                html {
+                    scroll-behavior: smooth;
+                    -webkit-text-size-adjust: 100%;
+                }
+
+                /* Fix for iOS Safari */
+                @supports (-webkit-touch-callout: none) {
+                    main {
+                        min-height: -webkit-fill-available;
+                    }
+                }
+            `}</style>
         </div>
     );
 };
