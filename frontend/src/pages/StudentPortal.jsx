@@ -460,6 +460,33 @@ const StudentPortal = () => {
                                     <Download size={16} /> Save PDF
                                 </button>
                             </div>
+
+                            {/* Back to Search Button */}
+                            <button
+                                onClick={() => setPlacement(null)}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '1rem',
+                                    padding: '0.75rem',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: '600',
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                                }}
+                                onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+                                onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+                            >
+                                <Search size={18} /> New Search
+                            </button>
                         </div>
 
 
@@ -469,22 +496,14 @@ const StudentPortal = () => {
             </main>
 
             <footer style={{
-                padding: '2rem',
+                padding: '1rem 2rem',
                 textAlign: 'center',
-                color: '#e5e7eb', // Light gray text
-                fontSize: '0.9rem',
-                backgroundColor: '#16a085', // Vibrant Teal Green matching header
-                borderTop: '1px solid #14532d' // Slightly darker border
+                color: '#e5e7eb',
+                fontSize: '0.85rem',
+                backgroundColor: '#10b981',
+                borderTop: '1px solid #059669'
             }}>
                 © 2026 Oda Bultum University - Dormitory Management System
-                {placement && (
-                    <div
-                        style={{ marginTop: '0.75rem', color: '#cca300', cursor: 'pointer', fontWeight: '500' }}
-                        onClick={() => setPlacement(null)}
-                    >
-                        Back to Search
-                    </div>
-                )}
             </footer>
         </div>
     );
