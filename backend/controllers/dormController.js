@@ -226,7 +226,7 @@ const autoAllocate = asyncHandler(async (req, res) => {
     }
 
     // 2. Build Room Query
-    const roomQuery = { status: { $ne: 'Under Maintenance' }, status: { $ne: 'Full' } };
+    const roomQuery = { status: { $ne: 'Under Maintenance' } };
     if (targetBuilding) roomQuery.building = targetBuilding;
     if (targetBlock) roomQuery.block = targetBlock; // Add block filter
 
@@ -292,10 +292,11 @@ const autoAllocate = asyncHandler(async (req, res) => {
                     });
                 }
 
+                // CRITICAL: Update room status based on occupancy
                 if (room.occupants.length >= room.capacity) {
                     room.status = 'Full';
-                } else {
-                    room.status = 'Available';
+                } else if (room.occupants.length > 0) {
+                    room.status = 'Available'; // Partially occupied but still available
                 }
 
                 await room.save();

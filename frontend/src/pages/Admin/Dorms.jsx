@@ -5,6 +5,7 @@ import axios from 'axios';
 const Dorms = () => {
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState('');
     const [blocks, setBlocks] = useState([]);
     const [genderFilter, setGenderFilter] = useState('M'); // New state for gender filter
@@ -26,6 +27,13 @@ const Dorms = () => {
     useEffect(() => {
         fetchRooms();
         fetchSystemSettings();
+        
+        // Auto-refresh every 5 seconds to catch updates from student assignments
+        const refreshInterval = setInterval(() => {
+            fetchRooms(true); // Pass true to indicate auto-refresh
+        }, 5000);
+        
+        return () => clearInterval(refreshInterval);
     }, []);
 
     useEffect(() => {
@@ -59,14 +67,39 @@ const Dorms = () => {
         }
     }, [rooms, genderFilter]);
 
-    const fetchRooms = async () => {
+    const fetchRooms = async (isAutoRefresh = false) => {
         try {
+            if (isAutoRefresh) {
+                setRefreshing(true);
+            }
             const { data } = await axios.get('http://localhost:5000/api/dorms');
-            setRooms(data);
+            
+            // Auto-update room status based on occupancy
+            const updatedRooms = data.map(room => {
+                const occupancyCount = room.occupants.length;
+                let newStatus = room.status;
+                
+                // Auto-update status based on occupancy
+                if (occupancyCount >= room.capacity && room.status !== 'Under Maintenance') {
+                    newStatus = 'Full';
+                } else if (occupancyCount < room.capacity && room.status === 'Full') {
+                    newStatus = 'Available';
+                }
+                
+                return { ...room, status: newStatus };
+            });
+            
+            setRooms(updatedRooms);
             setLoading(false);
+            if (isAutoRefresh) {
+                setRefreshing(false);
+            }
         } catch (error) {
             console.error('Error fetching rooms:', error);
             setLoading(false);
+            if (isAutoRefresh) {
+                setRefreshing(false);
+            }
         }
     };
 
@@ -236,14 +269,46 @@ const Dorms = () => {
                     <div>
                         <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
                             <Building size={32} /> Dormitory Management
+                            {refreshing && (
+                                <span style={{
+                                    fontSize: '0.75rem',
+                                    color: '#10b981',
+                                    background: '#dcfce7',
+                                    padding: '0.25rem 0.75rem',
+                                    borderRadius: '999px',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                }}>
+                                    <span style={{
+                                        width: '8px',
+                                        height: '8px',
+                                        background: '#10b981',
+                                        borderRadius: '50%',
+                                        animation: 'pulse 1.5s ease-in-out infinite'
+                                    }}></span>
+                                    Auto-updating...
+                                </span>
+                            )}
                         </h1>
                         <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                            Manage blocks, rooms, and occupancy
+                            Manage blocks, rooms, and occupancy • Auto-refreshes every 5 seconds
                         </p>
                     </div>
-                    <button onClick={handleAddBlock} className="btn btn-primary" style={{ gap: '0.5rem' }}>
-                        <Plus size={18} /> Add Block
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                            onClick={() => fetchRooms(true)} 
+                            className="btn btn-secondary" 
+                            style={{ gap: '0.5rem' }}
+                            disabled={refreshing}
+                        >
+                            <Settings size={18} /> {refreshing ? 'Refreshing...' : 'Refresh Now'}
+                        </button>
+                        <button onClick={handleAddBlock} className="btn btn-primary" style={{ gap: '0.5rem' }}>
+                            <Plus size={18} /> Add Block
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1143,6 +1208,17 @@ const Modal = ({ children, onClose, title }) => (
                 to {
                     opacity: 1;
                     transform: translateY(0);
+                }
+            }
+            
+            @keyframes pulse {
+                0%, 100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                50% {
+                    opacity: 0.5;
+                    transform: scale(1.2);
                 }
             }
         `}</style>
