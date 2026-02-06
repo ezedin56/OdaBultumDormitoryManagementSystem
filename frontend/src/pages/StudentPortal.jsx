@@ -247,7 +247,7 @@ const StudentPortal = () => {
                                     type="text"
                                     value={studentId}
                                     onChange={(e) => setStudentId(e.target.value)}
-                                    placeholder=""
+                                    placeholder="RU1270/18"
                                     style={{
                                         width: '100%',
                                         padding: '1rem',
